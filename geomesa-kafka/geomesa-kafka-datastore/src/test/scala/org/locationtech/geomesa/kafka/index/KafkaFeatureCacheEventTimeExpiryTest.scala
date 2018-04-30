@@ -37,6 +37,8 @@ class KafkaFeatureCacheEventTimeExpiryTest extends Specification {
 
     val cache = new FeatureCacheGuava(sft, Duration("100s"), true, expr, Duration.Inf, Duration.Inf)(ticker)
 
+    // Features should only last in the cache for 100 seconds
+    // Various checks are done to verify the features along the way.
     "Respect event-time expiry" in {
       sequential
 
@@ -70,7 +72,6 @@ class KafkaFeatureCacheEventTimeExpiryTest extends Specification {
       // advance the ticker 2 more seconds so the 80+21 = 101 seconds exceeds the 100s timeout
       ticker.millis += 2*1000
       cache.cleanUp()
-
       val fourthCheck = cache.query("1").isDefined
 
       // create a feature in the future

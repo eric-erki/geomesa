@@ -9,7 +9,6 @@
 package org.locationtech.geomesa.kafka.index
 
 import java.io.Closeable
-import java.time.Instant
 import java.util.Date
 import java.util.concurrent.{Executors, TimeUnit}
 
@@ -55,7 +54,7 @@ object KafkaFeatureCache {
             }
           }
         }
-        if(eventTimeExpiry) {
+        if (eventTimeExpiry) {
           builder.expireAfter(new Expiry[String, T] {
             private def getExpirationTime(value: T, curTimeNanos: Long) = {
               val eventTime = getEventTime(value)
@@ -63,18 +62,19 @@ object KafkaFeatureCache {
                 logger.warn("Unexpected null event time, expiring immediately")
                 0L
               } else {
-                val dtg = Instant.ofEpochMilli(eventTime.getTime)
-                val now = Instant.now()
-                if (dtg.isBefore(now)) {
-                  val duration = java.time.Duration.between(dtg, now) // amount of time elapsed
-                  val newExpiry = expiry.toMillis - duration.toMillis
-                  if (newExpiry >= 0) TimeUnit.MILLISECONDS.toNanos(newExpiry) else 0L
-                } else {
-                  // if data is from the future
-                  val duration = java.time.Duration.between(now, dtg) // amount of time elapsed
-                  val newExpiry = expiry.toMillis + duration.toMillis
-                  TimeUnit.MILLISECONDS.toNanos(newExpiry)
-                }
+                  val eventTimeNanos = eventTime.getTime * 1000 * 1000
+                  if (eventTimeNanos < curTimeNanos) {
+                    // event time is before curTime
+                    val d = curTimeNanos - eventTimeNanos
+                    val eventExpiry = expiry.toNanos - d
+                    if (eventExpiry >= 0) eventExpiry else 0L
+                  } else if (eventTimeNanos > curTimeNanos) {
+                    // future data
+                    val duration = eventTimeNanos - curTimeNanos //amount of nanos into future
+                    expiry.toNanos + duration
+                  } else {
+                    expiry.toNanos
+                  }
               }
             }
             override def expireAfterUpdate(key: String, value: T, currentTime: Long, currentDuration: Long): Long = getExpirationTime(value, currentTime)
