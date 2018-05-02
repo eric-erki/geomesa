@@ -25,9 +25,24 @@ trait SpatialIndex[T] {
 }
 
 object SpatialIndex {
+
   def getCenter(envelope: Envelope): (Double, Double) = {
     val x = (envelope.getMinX + envelope.getMaxX) / 2.0
     val y = (envelope.getMinY + envelope.getMaxY) / 2.0
     (x, y)
+  }
+
+  trait PointIndex[T] extends SpatialIndex[T] {
+    override def insert(envelope: Envelope, item: T): Unit = {
+      val (x, y) = getCenter(envelope)
+      insert(x, y, item)
+    }
+    override def remove(envelope: Envelope, item: T): Boolean = {
+      val (x, y) = getCenter(envelope)
+      remove(x, y, item)
+    }
+
+    def insert(x: Double, y: Double, item: T): Unit
+    def remove(x: Double, y: Double, item: T): Boolean
   }
 }

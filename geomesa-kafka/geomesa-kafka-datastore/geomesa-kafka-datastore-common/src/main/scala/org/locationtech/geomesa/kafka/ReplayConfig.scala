@@ -80,8 +80,8 @@ case class ReplaySnapshotFeatureCache(override val sft: SimpleFeatureType,
 
   override lazy val (spatialIndex, features) = processMessages
 
-  private def processMessages: (SpatialIndex[SimpleFeature], mutable.Map[String, FeatureHolder]) = {
-    val features = new mutable.HashMap[String, FeatureHolder]()
+  private def processMessages: (SpatialIndex[SimpleFeature], mutable.Map[String, SimpleFeature]) = {
+    val features = new mutable.HashMap[String, SimpleFeature]()
     val qt = new WrappedQuadtree[SimpleFeature]
     val seen = new mutable.HashSet[String]
 
@@ -97,7 +97,7 @@ case class ReplaySnapshotFeatureCache(override val sft: SimpleFeatureType,
           val modSF = timeHelper.reType(sf)
 
           qt.insert(env, modSF)
-          features.put(id, FeatureHolder(modSF, env))
+          features.put(id, modSF)
           seen.add(id)
         }
 

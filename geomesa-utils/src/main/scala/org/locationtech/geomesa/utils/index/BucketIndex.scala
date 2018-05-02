@@ -13,28 +13,31 @@ import java.util.concurrent.ConcurrentHashMap
 
 import com.vividsolutions.jts.geom.Envelope
 import org.locationtech.geomesa.utils.geotools.GridSnap
+import org.locationtech.geomesa.utils.index.SpatialIndex.PointIndex
+
+import scala.annotation.tailrec
 
 /**
- * Spatial index that breaks up space into discrete buckets to index points.
- * Does not support non-point inserts.
- */
+  * Spatial index that breaks up space into discrete buckets to index points.
+  * Does not support non-point inserts.
+  */
 class BucketIndex[T](xBuckets: Int = 360,
                      yBuckets: Int = 180,
-                     extents: Envelope = new Envelope(-180.0, 180.0, -90.0, 90.0)) extends SpatialIndex[T] {
+                     extents: Envelope = new Envelope(-180.0, 180.0, -90.0, 90.0)) extends PointIndex[T] {
 
   private val gridSnap = new GridSnap(extents, xBuckets, yBuckets)
   // create the buckets up front to avoid having to synchronize the whole array
-  // we use a concurrentHashSet, which gives us iterators that aren't affected by modifications to the backing set
-  private def newSet = Collections.newSetFromMap(new ConcurrentHashMap[T, java.lang.Boolean])
-  private val buckets = Array.fill(xBuckets, yBuckets)(newSet)
+  private val buckets = Array.fill(xBuckets, yBuckets)(new LazySet)
 
-  override def insert(envelope: Envelope, item: T): Unit = {
-    val (i, j) = getBucket(envelope)
+  override def insert(x: Double, y: Double, item: T): Unit = {
+    val i = snapX(x)
+    val j = snapY(y)
     buckets(i)(j).add(item)
   }
 
-  override def remove(envelope: Envelope, item: T): Boolean = {
-    val (i, j) = getBucket(envelope)
+  override def remove(x: Double, y: Double, item: T): Boolean = {
+    val i = snapX(x)
+    val j = snapY(y)
     buckets(i)(j).remove(item)
   }
 
@@ -44,34 +47,7 @@ class BucketIndex[T](xBuckets: Int = 360,
     val minj = snapY(envelope.getMinY)
     val maxj = snapY(envelope.getMaxY)
 
-    new Iterator[T]() {
-      import scala.collection.JavaConverters._
-
-      private var i = mini
-      private var j = minj
-      private var iter = Iterator.empty.asInstanceOf[Iterator[T]].asJava
-
-      override def hasNext: Boolean = {
-        while (!iter.hasNext && i <= maxi && j <= maxj) {
-          val bucket = buckets(i)(j)
-          if (j < maxj) {
-            j += 1
-          } else {
-            j = minj
-            i += 1
-          }
-          iter = bucket.iterator()
-        }
-        iter.hasNext
-      }
-
-      override def next(): T = iter.next()
-    }
-  }
-
-  private def getBucket(envelope: Envelope): (Int, Int) = {
-    val (x, y) = SpatialIndex.getCenter(envelope)
-    (snapX(x), snapY(y))
+    new BucketIterator(mini, maxi, minj, maxj)
   }
 
   private def snapX(x: Double): Int = {
@@ -82,5 +58,41 @@ class BucketIndex[T](xBuckets: Int = 360,
   private def snapY(y: Double): Int = {
     val j = gridSnap.j(y)
     if (j != -1) { j } else if (y < extents.getMinY) { 0 } else { yBuckets - 1 }
+  }
+
+  class BucketIterator private [BucketIndex] (mini: Int, maxi: Int, minj: Int, maxj: Int) extends Iterator[T] {
+
+    private var i = mini
+    private var j = minj
+    private var iter = buckets(i)(j).iterator()
+
+    @tailrec
+    override final def hasNext: Boolean = iter.hasNext || {
+      if (i == maxi && j == maxj) { false } else {
+        if (j < maxj) {
+          j += 1
+        } else {
+          j = minj
+          i += 1
+        }
+        iter = buckets(i)(j).iterator()
+        hasNext
+      }
+    }
+
+    override def next(): T = iter.next()
+  }
+
+  private class LazySet {
+
+    // we use a ConcurrentHashSet, which gives us iterators that aren't affected by modifications to the backing set
+    // we make it lazy as many buckets might not actually be used
+    lazy private val set = Collections.newSetFromMap(new ConcurrentHashMap[T, java.lang.Boolean])
+
+    def iterator(): java.util.Iterator[T] = set.iterator()
+
+    def add(e: T): Boolean = set.add(e)
+
+    def remove(o: scala.Any): Boolean = set.remove(o)
   }
 }

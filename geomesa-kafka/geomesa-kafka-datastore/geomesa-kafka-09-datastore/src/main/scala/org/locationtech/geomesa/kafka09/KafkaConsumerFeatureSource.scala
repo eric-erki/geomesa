@@ -37,9 +37,9 @@ abstract class KafkaConsumerFeatureSource(entry: ContentEntry,
                                           query: Query,
                                           monitor: Boolean)
   extends ContentFeatureSource(entry, query)
-  with ContentFeatureSourceSecuritySupport
-  with ContentFeatureSourceReTypingSupport
-  with ContentFeatureSourceInfo {
+    with ContentFeatureSourceSecuritySupport
+    with ContentFeatureSourceReTypingSupport
+    with ContentFeatureSourceInfo {
 
   import org.locationtech.geomesa.utils.geotools._
 
@@ -49,7 +49,7 @@ abstract class KafkaConsumerFeatureSource(entry: ContentEntry,
     val builder = new SimpleFeatureTypeBuilder()
     builder.init(sft)
     builder.setNamespaceURI(getDataStore.getNamespaceURI)
-    sft.getUserData.foreach { case (k, v) => builder.userData(k, v)}
+    sft.getUserData.foreach { case (k, v) => builder.userData(k, v) }
     builder.buildFeatureType()
   }
 
@@ -110,6 +110,12 @@ object KafkaConsumerFeatureSourceFactory extends LazyLogging {
       Option(KafkaDataStoreFactoryParams.USE_CQ_LIVE_CACHE.lookUp(params).asInstanceOf[Boolean]).getOrElse(false)
     }
 
+    val buckets: (Int, Int) = {
+      val x = Option(KafkaDataStoreFactoryParams.CACHE_X_BUCKETS.lookUp(params).asInstanceOf[Integer]).map(_.intValue()).getOrElse(360)
+      val y = Option(KafkaDataStoreFactoryParams.CACHE_X_BUCKETS.lookUp(params).asInstanceOf[Integer]).map(_.intValue()).getOrElse(180)
+      (x, y)
+    }
+
     val monitor: Boolean = {
       Option(KafkaDataStoreFactoryParams.COLLECT_QUERY_STAT.lookUp(params).asInstanceOf[Boolean]).getOrElse(false)
     }
@@ -126,7 +132,7 @@ object KafkaConsumerFeatureSourceFactory extends LazyLogging {
 
       fc.replayConfig match {
         case None =>
-          new LiveKafkaConsumerFeatureSource(entry, fc.sft, fc.topic, kf, expirationPeriod, consistencyCheck, cleanUpCache, useCQCache, query, monitor, cacheCleanUpPeriod)
+          new LiveKafkaConsumerFeatureSource(entry, fc.sft, fc.topic, kf, expirationPeriod, consistencyCheck, cleanUpCache, useCQCache, buckets, query, monitor, cacheCleanUpPeriod)
 
         case Some(rc) =>
           val replaySFT = fc.sft

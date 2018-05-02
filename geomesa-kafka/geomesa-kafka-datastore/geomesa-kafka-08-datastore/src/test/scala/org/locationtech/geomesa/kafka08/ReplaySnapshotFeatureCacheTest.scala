@@ -8,7 +8,7 @@
 
 package org.locationtech.geomesa.kafka08
 
-import com.vividsolutions.jts.geom.Envelope
+import com.vividsolutions.jts.geom.{Envelope, Geometry}
 import org.joda.time.Instant
 import org.junit.runner.RunWith
 import org.locationtech.geomesa.kafka._
@@ -39,13 +39,12 @@ class ReplaySnapshotFeatureCacheTest extends Specification with SimpleFeatureMat
       cache.features must haveSize(1)
 
       val holder = cache.features("track0")
-      holder.sf must equalSFWithReplayTime(track0v0)
+      holder must equalSFWithReplayTime(track0v0)
 
       cache.spatialIndex.query(wholeWorld) must haveSize(1)
-      val queryResult = cache.spatialIndex.query(holder.env).toSeq
+      val queryResult = cache.spatialIndex.query(holder.getDefaultGeometry.asInstanceOf[Geometry].getEnvelopeInternal).toSeq
       queryResult must haveSize(1)
-      queryResult.head must beAnInstanceOf[SimpleFeature]
-      queryResult.head.asInstanceOf[SimpleFeature] must equalSFWithReplayTime(track0v0)
+      queryResult.head must equalSFWithReplayTime(track0v0)
     }
 
     "use the most recent version of a feature" >> {
@@ -60,13 +59,12 @@ class ReplaySnapshotFeatureCacheTest extends Specification with SimpleFeatureMat
       cache.features must haveSize(1)
 
       val holder = cache.features("track0")
-      holder.sf must equalSFWithReplayTime(track0v3)
+      holder must equalSFWithReplayTime(track0v3)
 
       cache.spatialIndex.query(wholeWorld) must haveSize(1)
-      val queryResult = cache.spatialIndex.query(holder.env).toSeq
+      val queryResult = cache.spatialIndex.query(holder.getDefaultGeometry.asInstanceOf[Geometry].getEnvelopeInternal).toSeq
       queryResult must haveSize(1)
-      queryResult.head must beAnInstanceOf[SimpleFeature]
-      queryResult.head.asInstanceOf[SimpleFeature] must equalSFWithReplayTime(track0v3)
+      queryResult.head must equalSFWithReplayTime(track0v3)
     }
 
     "exclude deleted features" >> {
@@ -95,13 +93,12 @@ class ReplaySnapshotFeatureCacheTest extends Specification with SimpleFeatureMat
       cache.features must haveSize(1)
 
       val holder = cache.features("track0")
-      holder.sf must equalSFWithReplayTime(track0v3)
+      holder must equalSFWithReplayTime(track0v3)
 
       cache.spatialIndex.query(wholeWorld) must haveSize(1)
-      val queryResult = cache.spatialIndex.query(holder.env).toSeq
+      val queryResult = cache.spatialIndex.query(holder.getDefaultGeometry.asInstanceOf[Geometry].getEnvelopeInternal).toSeq
       queryResult must haveSize(1)
-      queryResult.head must beAnInstanceOf[SimpleFeature]
-      queryResult.head.asInstanceOf[SimpleFeature] must equalSFWithReplayTime(track0v3)
+      queryResult.head must equalSFWithReplayTime(track0v3)
     }
 
     "not handle Clear messages" >> {

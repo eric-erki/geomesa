@@ -11,6 +11,7 @@ package org.locationtech.geomesa.kafka
 import java.io.Closeable
 
 import org.locationtech.geomesa.utils.geotools.FR
+import org.opengis.feature.simple.SimpleFeature
 import org.opengis.filter.Filter
 
 trait LiveFeatureCache extends Closeable {
@@ -20,6 +21,6 @@ trait LiveFeatureCache extends Closeable {
   def clear(): Unit
   def size(): Int
   def size(filter: Filter): Int
-  def getFeatureById(id: String): FeatureHolder
+  def getFeatureById(id: String): SimpleFeature
   def getReaderForFilter(filter: Filter): FR
 }

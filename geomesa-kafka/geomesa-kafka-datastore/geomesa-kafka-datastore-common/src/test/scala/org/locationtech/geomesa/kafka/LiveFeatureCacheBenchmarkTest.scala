@@ -217,7 +217,7 @@ class LiveFeatureCacheBenchmarkTest extends Specification {
 
   // load different LiveFeatureCache implementations
   implicit val ticker = Ticker.systemTicker()
-  val lfc = new LiveFeatureCacheGuava(sft, None)
+  val lfc = new LiveFeatureCacheGuava(sft, None, None, (360, 180))
   //val h2  = new LiveFeatureCacheH2(sft)
   val cq = new LiveFeatureCacheCQEngine(sft, None)
 

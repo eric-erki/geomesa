@@ -36,12 +36,12 @@ trait SimpleFeatureMatchers extends Specification {
     }
   }
 
-  def equalFeatureHolder(expected: SimpleFeature): Matcher[FeatureHolder] = {
-    fh: FeatureHolder => fh.sf must equalSF(expected)
+  def equalFeatureHolder(expected: SimpleFeature): Matcher[SimpleFeature] = {
+    fh: SimpleFeature => fh must equalSF(expected)
   }
 
-  def featureHolder(expected: SimpleFeature): ValueCheck[FeatureHolder] = {
-    fh: FeatureHolder => fh.sf must equalSF(expected)
+  def featureHolder(expected: SimpleFeature): ValueCheck[SimpleFeature] = {
+    fh: SimpleFeature => fh must equalSF(expected)
   }
 
   def containTheSameFeatureHoldersAs(expected: SimpleFeature*): Matcher[JList[_]] = {

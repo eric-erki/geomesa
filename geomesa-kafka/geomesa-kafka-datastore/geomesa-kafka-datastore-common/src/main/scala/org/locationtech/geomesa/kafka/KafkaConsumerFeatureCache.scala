@@ -19,9 +19,9 @@ import scala.collection.mutable
 
 trait KafkaConsumerFeatureCache extends SpatialIndexSupport {
 
-  def features: mutable.Map[String, FeatureHolder]
+  def features: mutable.Map[String, SimpleFeature]
 
-  override def allFeatures(): Iterator[SimpleFeature] = features.valuesIterator.map(_.sf)
+  override def allFeatures(): Iterator[SimpleFeature] = features.valuesIterator
 
   def size(): Int = features.size
 
@@ -41,6 +41,6 @@ trait KafkaConsumerFeatureCache extends SpatialIndexSupport {
     }
 
   def fid(ids: Id): SimpleFeatureReader =
-    reader(ids.getIDs.flatMap(id => features.get(id.toString).map(_.sf)).iterator)
+    reader(ids.getIDs.flatMap(id => features.get(id.toString)).iterator)
 }
 

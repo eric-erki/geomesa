@@ -94,6 +94,8 @@ object KafkaDataStoreFactoryParams {
   val CONSISTENCY_CHECK = new Param("consistencyCheck", classOf[java.lang.Long], "Milliseconds between checking the feature cache for consistency. Leave blank or use -1 to not check for consistency.", false)
   val CLEANUP_LIVE_CACHE   = new Param("cleanUpCache", classOf[java.lang.Boolean], "Run a thread to clean up the live feature cache if set to true. False by default. use 'cleanUpCachePeriod' to configure the length of time between cache cleanups. Every second by default", false)
   val CACHE_CLEANUP_PERIOD = new Param("cleanUpCachePeriod", classOf[String], "Configure the time period between cache cleanups. Default is every ten seconds. This parameter is not used if 'cleanUpCache' is false.", false, "10s")
+  val CACHE_X_BUCKETS    = new Param("kafka.cache.buckets.x", classOf[Integer], "Number of buckets in the x-dimension of the spatial index", false, 360)
+  val CACHE_Y_BUCKETS    = new Param("kafka.cache.buckets.y", classOf[Integer], "Number of buckets in the y-dimension of the spatial index", false, 180)
   val USE_CQ_LIVE_CACHE  = new Param("useCQCache", classOf[java.lang.Boolean], "Use CQEngine-based implementation of live feature cache. False by default.", false, false)
   val COLLECT_QUERY_STAT = new Param("collectQueryStats", classOf[java.lang.Boolean], "Enable monitoring stats for feature store.", false)
   val AUTO_OFFSET_RESET = new Param("autoOffsetReset", classOf[java.lang.String], "What offset to reset to when there is no initial offset in ZooKeeper or if an offset is out of range. Default is largest.", false, "largest", Map(Parameter.OPTIONS -> Lists.newArrayList("largest","smallest")).asJava)
@@ -112,6 +114,7 @@ object KafkaDataStore {
 /** A [[DataStoreFactorySpi]] to create a [[KafkaDataStore]] in either producer or consumer mode */
 class KafkaDataStoreFactory extends DataStoreFactorySpi {
 
+  import KafkaDataStore._
   import KafkaDataStoreFactoryParams._
 
   override def createDataStore(params: ju.Map[String, Serializable]): DataStore = {
@@ -145,16 +148,14 @@ class KafkaDataStoreFactory extends DataStoreFactorySpi {
     throw new UnsupportedOperationException
 
   override def getDisplayName: String = "Kafka (GeoMesa)"
-
   override def getDescription: String = "Apache Kafka\u2122 distributed messaging queue"
 
   override def getParametersInfo: Array[Param] =
-    Array(KAFKA_BROKER_PARAM, ZOOKEEPERS_PARAM, ZK_PATH, EXPIRATION_PERIOD, CONSISTENCY_CHECK, CLEANUP_LIVE_CACHE, CACHE_CLEANUP_PERIOD, USE_CQ_LIVE_CACHE, TOPIC_PARTITIONS, TOPIC_REPLICATION, PRODUCER_CFG_PARAM, CONSUMER_CFG_PARAM, NAMESPACE_PARAM, COLLECT_QUERY_STAT, AUTO_OFFSET_RESET)
+    Array(KAFKA_BROKER_PARAM, ZOOKEEPERS_PARAM, ZK_PATH, EXPIRATION_PERIOD, CONSISTENCY_CHECK, CLEANUP_LIVE_CACHE, CACHE_CLEANUP_PERIOD, USE_CQ_LIVE_CACHE, CACHE_X_BUCKETS, CACHE_Y_BUCKETS, TOPIC_PARTITIONS, TOPIC_REPLICATION, PRODUCER_CFG_PARAM, CONSUMER_CFG_PARAM, NAMESPACE_PARAM, COLLECT_QUERY_STAT, AUTO_OFFSET_RESET)
 
   override def canProcess(params: ju.Map[String, Serializable]): Boolean =
     params.containsKey(KAFKA_BROKER_PARAM.key) && params.containsKey(ZOOKEEPERS_PARAM.key)
 
   override def isAvailable: Boolean = true
-
   override def getImplementationHints: ju.Map[Key, _] = null
 }

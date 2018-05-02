@@ -12,8 +12,10 @@ import java.util.concurrent.{Executors, TimeUnit}
 
 import com.github.benmanes.caffeine.cache._
 import com.typesafe.scalalogging.LazyLogging
+import com.vividsolutions.jts.geom.{Geometry, Point}
 import org.locationtech.geomesa.utils.geotools.Conversions._
-import org.locationtech.geomesa.utils.index.{BucketIndex, SpatialIndex}
+import org.locationtech.geomesa.utils.index.BucketIndex
+import org.locationtech.geomesa.utils.index.SpatialIndex.PointIndex
 import org.opengis.feature.simple.{SimpleFeature, SimpleFeatureType}
 
 import scala.collection.JavaConverters._
@@ -26,26 +28,29 @@ import scala.collection.mutable
   */
 class LiveFeatureCacheGuava(override val sft: SimpleFeatureType,
                             expirationPeriod: Option[Long],
-                            consistencyCheck: Option[Long] = None)
+                            consistencyCheck: Option[Long],
+                            buckets: (Int, Int))
                            (implicit ticker: Ticker)
   extends KafkaConsumerFeatureCache with LiveFeatureCache with LazyLogging {
 
-  var spatialIndex: SpatialIndex[SimpleFeature] = newSpatialIndex()
+  import org.locationtech.geomesa.utils.geotools.Conversions.RichGeometry
 
-  private val cache: Cache[String, FeatureHolder] = {
+  var spatialIndex: PointIndex[SimpleFeature] = newSpatialIndex()
+
+  protected val cache: Cache[String, SimpleFeature] = {
     val cb = Caffeine.newBuilder().ticker(ticker)
     expirationPeriod.foreach { ep =>
       cb.expireAfterWrite(ep, TimeUnit.MILLISECONDS)
-        .removalListener(new RemovalListener[String, FeatureHolder] {
-          override def onRemoval(key: String, value: FeatureHolder, cause: RemovalCause): Unit = {
+        .removalListener(new RemovalListener[String, SimpleFeature] {
+          override def onRemoval(key: String, value: SimpleFeature, cause: RemovalCause): Unit = {
             if (cause != RemovalCause.REPLACED) {
               logger.debug(s"Removing feature $key due to ${cause.name()} after ${ep}ms")
-              spatialIndex.remove(value.env, value.sf)
+              removeFromIndex(value)
             }
           }
         })
     }
-    cb.build[String, FeatureHolder]()
+    cb.build[String, SimpleFeature]()
   }
 
   private val consistencyChecker = consistencyCheck.map { interval =>
@@ -59,7 +64,7 @@ class LiveFeatureCacheGuava(override val sft: SimpleFeatureType,
 
       override def run(): Unit = {
         val cacheInconsistencies = features.collect {
-          case (id, FeatureHolder(sf, env)) if spatialIndex.query(env, filter(_, id)).isEmpty => sf
+          case (id, sf) if spatialIndex.query(sf.geometry.getEnvelopeInternal, filter(_, id)).isEmpty => sf
         }.toSet
         val spatialInconsistencies = spatialIndex.query(wholeWorldEnvelope).filter { sf =>
           val cached = cache.getIfPresent(sf.getID)
@@ -70,7 +75,7 @@ class LiveFeatureCacheGuava(override val sft: SimpleFeatureType,
         lastRun = union.filter { sf =>
           if (lastRun.contains(sf)) {
             cache.invalidate(sf.getID)
-            spatialIndex.remove(sf.geometry.getEnvelopeInternal, sf)
+            removeFromIndex(sf)
             false
           } else {
             true // we'll check it again next time
@@ -83,7 +88,7 @@ class LiveFeatureCacheGuava(override val sft: SimpleFeatureType,
     es
   }
 
-  override val features: mutable.Map[String, FeatureHolder] = cache.asMap().asScala
+  override val features: mutable.Map[String, SimpleFeature] = cache.asMap().asScala
 
   override def cleanUp(): Unit = cache.cleanUp()
 
@@ -97,11 +102,10 @@ class LiveFeatureCacheGuava(override val sft: SimpleFeatureType,
     val id = sf.getID
     val old = cache.getIfPresent(id)
     if (old != null) {
-      spatialIndex.remove(old.env, old.sf)
+      removeFromIndex(old)
     }
-    val env = sf.geometry.getEnvelopeInternal
-    spatialIndex.insert(env, sf)
-    cache.put(id, FeatureHolder(sf, env))
+    addToIndex(sf)
+    cache.put(id, sf)
   }
 
   /**
@@ -113,7 +117,7 @@ class LiveFeatureCacheGuava(override val sft: SimpleFeatureType,
     val id = toDelete.id
     val old = cache.getIfPresent(id)
     if (old != null) {
-      spatialIndex.remove(old.env, old.sf)
+      removeFromIndex(old)
       cache.invalidate(id)
     }
   }
@@ -123,9 +127,37 @@ class LiveFeatureCacheGuava(override val sft: SimpleFeatureType,
     spatialIndex = newSpatialIndex()
   }
 
-  override def getFeatureById(id: String): FeatureHolder = cache.getIfPresent(id)
+  protected def addToIndex(sf: SimpleFeature): Unit = {
+    val pt = sf.getDefaultGeometry.asInstanceOf[Geometry].safeCentroid()
+    spatialIndex.insert(pt.getX, pt.getY, sf)
+  }
+
+  protected def removeFromIndex(sf: SimpleFeature): Unit = {
+    val pt = sf.getDefaultGeometry.asInstanceOf[Geometry].safeCentroid()
+    spatialIndex.remove(pt.getX, pt.getY, sf)
+  }
+
+  override def getFeatureById(id: String): SimpleFeature = cache.getIfPresent(id)
 
   override def close(): Unit = consistencyChecker.foreach(_.shutdown())
 
   private def newSpatialIndex() = new BucketIndex[SimpleFeature]
+}
+
+class LiveFeatureCacheGuavaPoints(sft: SimpleFeatureType,
+                                  expirationPeriod: Option[Long],
+                                  consistencyCheck: Option[Long],
+                                  buckets: (Int, Int))
+                                 (implicit ticker: Ticker)
+    extends LiveFeatureCacheGuava(sft, expirationPeriod, consistencyCheck, buckets) {
+
+  override protected def addToIndex(sf: SimpleFeature): Unit = {
+    val pt = sf.getDefaultGeometry.asInstanceOf[Point]
+    spatialIndex.insert(pt.getX, pt.getY, sf)
+  }
+
+  override protected def removeFromIndex(sf: SimpleFeature): Unit = {
+    val pt = sf.getDefaultGeometry.asInstanceOf[Point]
+    spatialIndex.remove(pt.getX, pt.getY, sf)
+  }
 }

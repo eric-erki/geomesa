@@ -21,7 +21,6 @@ import org.geotools.filter.visitor.BindingFilterVisitor
 import org.geotools.geometry.jts.ReferencedEnvelope
 import org.locationtech.geomesa.filter.visitor.QueryPlanFilterVisitor
 import org.locationtech.geomesa.kafka08.KafkaDataStore.FeatureSourceFactory
-import org.locationtech.geomesa.kafka08.KafkaDataStoreFactoryParams.CONSUMER_CFG_PARAM
 import org.locationtech.geomesa.kafka08.consumer.KafkaConsumerFactory
 import org.locationtech.geomesa.security.ContentFeatureSourceSecuritySupport
 import org.locationtech.geomesa.utils.collection.SelfClosingIterator
@@ -38,9 +37,9 @@ abstract class KafkaConsumerFeatureSource(entry: ContentEntry,
                                           query: Query,
                                           monitor: Boolean)
   extends ContentFeatureSource(entry, query)
-  with ContentFeatureSourceSecuritySupport
-  with ContentFeatureSourceReTypingSupport
-  with ContentFeatureSourceInfo {
+    with ContentFeatureSourceSecuritySupport
+    with ContentFeatureSourceReTypingSupport
+    with ContentFeatureSourceInfo {
 
   import org.locationtech.geomesa.utils.geotools._
 
@@ -50,7 +49,7 @@ abstract class KafkaConsumerFeatureSource(entry: ContentEntry,
     val builder = new SimpleFeatureTypeBuilder()
     builder.init(sft)
     builder.setNamespaceURI(getDataStore.getNamespaceURI)
-    sft.getUserData.foreach { case (k, v) => builder.userData(k, v)}
+    sft.getUserData.foreach { case (k, v) => builder.userData(k, v) }
     builder.buildFeatureType()
   }
 
@@ -85,7 +84,7 @@ object KafkaConsumerFeatureSourceFactory extends LazyLogging {
 
   def apply(brokers: String, zk: String, params: ju.Map[String, Serializable]): FeatureSourceFactory = {
 
-    lazy val expirationPeriod: Option[Long] = {
+    val expirationPeriod: Option[Long] = {
       Option(KafkaDataStoreFactoryParams.EXPIRATION_PERIOD.lookUp(params)).map(_.toString.toLong).filter(_ > 0)
     }
 
@@ -111,6 +110,12 @@ object KafkaConsumerFeatureSourceFactory extends LazyLogging {
       Option(KafkaDataStoreFactoryParams.USE_CQ_LIVE_CACHE.lookUp(params).asInstanceOf[Boolean]).getOrElse(false)
     }
 
+    val buckets: (Int, Int) = {
+      val x = Option(KafkaDataStoreFactoryParams.CACHE_X_BUCKETS.lookUp(params).asInstanceOf[Integer]).map(_.intValue()).getOrElse(360)
+      val y = Option(KafkaDataStoreFactoryParams.CACHE_X_BUCKETS.lookUp(params).asInstanceOf[Integer]).map(_.intValue()).getOrElse(180)
+      (x, y)
+    }
+
     val monitor: Boolean = {
       Option(KafkaDataStoreFactoryParams.COLLECT_QUERY_STAT.lookUp(params).asInstanceOf[Boolean]).getOrElse(false)
     }
@@ -119,7 +124,7 @@ object KafkaConsumerFeatureSourceFactory extends LazyLogging {
       Option(KafkaDataStoreFactoryParams.AUTO_OFFSET_RESET.lookUp(params).asInstanceOf[String]).getOrElse("largest")
     }
 
-    val consumerConfig = KafkaDataStore.parseConfig(Option(CONSUMER_CFG_PARAM.lookUp(params).asInstanceOf[String]))
+    val consumerConfig = KafkaDataStore.parseConfig(Option(KafkaDataStoreFactoryParams.CONSUMER_CFG_PARAM.lookUp(params).asInstanceOf[String]))
 
     (entry: ContentEntry, query: Query, schemaManager: KafkaDataStoreSchemaManager) => {
       val kf = new KafkaConsumerFactory(brokers, zk, autoOffsetReset, consumerConfig)
@@ -127,7 +132,7 @@ object KafkaConsumerFeatureSourceFactory extends LazyLogging {
 
       fc.replayConfig match {
         case None =>
-          new LiveKafkaConsumerFeatureSource(entry, fc.sft, fc.topic, kf, expirationPeriod, consistencyCheck, cleanUpCache, useCQCache, query, monitor, cacheCleanUpPeriod)
+          new LiveKafkaConsumerFeatureSource(entry, fc.sft, fc.topic, kf, expirationPeriod, consistencyCheck, cleanUpCache, useCQCache, buckets, query, monitor, cacheCleanUpPeriod)
 
         case Some(rc) =>
           val replaySFT = fc.sft

@@ -33,16 +33,22 @@ class LiveKafkaConsumerFeatureSource(e: ContentEntry,
                                      consistencyCheck: Option[Long] = None,
                                      cleanUpCache: Boolean,
                                      useCQCache: Boolean,
+                                     buckets: (Int, Int),
                                      q: Query,
                                      monitor: Boolean,
                                      cleanUpCachePeriod: Long = 10000L)
                                     (implicit ticker: Ticker = Ticker.systemTicker())
   extends KafkaConsumerFeatureSource(e, sft, q, monitor) with Runnable with Closeable with LazyLogging {
 
-  private[kafka10] val featureCache: LiveFeatureCache = if (useCQCache) {
-    new LiveFeatureCacheCQEngine(sft, expirationPeriod)
-  } else {
-    new LiveFeatureCacheGuava(sft, expirationPeriod, consistencyCheck)
+  private[kafka10] val featureCache: LiveFeatureCache = {
+    import RichSimpleFeatureType.RichSimpleFeatureType
+    if (useCQCache) {
+      new LiveFeatureCacheCQEngine(sft, expirationPeriod)
+    } else if (sft.isPoints) {
+      new LiveFeatureCacheGuavaPoints(sft, expirationPeriod, consistencyCheck, buckets)
+    } else {
+      new LiveFeatureCacheGuava(sft, expirationPeriod, consistencyCheck, buckets)
+    }
   }
 
   private lazy val contentState = entry.getState(getTransaction)
@@ -130,7 +136,7 @@ class LiveKafkaConsumerFeatureSource(e: ContentEntry,
               featureCache.createOrUpdateFeature(update)
             }
           case del: Delete =>
-            fireEvent(KafkaFeatureEvent.removed(this, featureCache.getFeatureById(del.id).sf))
+            fireEvent(KafkaFeatureEvent.removed(this, featureCache.getFeatureById(del.id)))
             featureCache.removeFeature(del)
           case clr: Clear =>
             fireEvent(KafkaFeatureEvent.cleared(this))
@@ -165,5 +171,6 @@ class LiveKafkaConsumerFeatureSource(e: ContentEntry,
     client.shutdown()
     es.shutdownNow()
     ses.shutdownNow()
+    featureCache.close()
   }
 }

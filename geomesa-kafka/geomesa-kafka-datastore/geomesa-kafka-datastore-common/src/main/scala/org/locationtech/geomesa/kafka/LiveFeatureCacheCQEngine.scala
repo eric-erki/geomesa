@@ -16,7 +16,7 @@ import org.locationtech.geomesa.memory.cqengine.GeoCQEngine
 import org.locationtech.geomesa.utils.collection.SelfClosingIterator
 import org.locationtech.geomesa.utils.geotools.Conversions._
 import org.locationtech.geomesa.utils.geotools._
-import org.opengis.feature.simple.SimpleFeatureType
+import org.opengis.feature.simple.{SimpleFeature, SimpleFeatureType}
 import org.opengis.filter._
 
 import scala.collection.JavaConversions._
@@ -33,8 +33,8 @@ class LiveFeatureCacheCQEngine(sft: SimpleFeatureType,
     val cb = Caffeine.newBuilder().ticker(ticker)
     expirationPeriod.foreach { ep =>
       cb.expireAfterWrite(ep, TimeUnit.MILLISECONDS)
-        .removalListener(new RemovalListener[String, FeatureHolder] {
-          override def onRemoval(key: String, value: FeatureHolder, cause: RemovalCause): Unit = {
+        .removalListener(new RemovalListener[String, SimpleFeature] {
+          override def onRemoval(key: String, value: SimpleFeature, cause: RemovalCause): Unit = {
             if (cause == RemovalCause.EXPIRED) {
               logger.debug(s"Removing feature $key due to expiration after ${ep}ms")
               geocq.remove(value.sf)
@@ -42,10 +42,10 @@ class LiveFeatureCacheCQEngine(sft: SimpleFeatureType,
           }
         })
     }
-    cb.build[String, FeatureHolder]()
+    cb.build[String, SimpleFeature]()
   }
 
-  val features: mutable.Map[String, FeatureHolder] = cache.asMap().asScala
+  val features: mutable.Map[String, SimpleFeature] = cache.asMap().asScala
 
   def size(): Int = {
     features.size
@@ -73,14 +73,13 @@ class LiveFeatureCacheCQEngine(sft: SimpleFeatureType,
     val id = sf.getID
     val old = cache.getIfPresent(id)
     if (old != null) {
-      geocq.remove(old.sf)
+      geocq.remove(old)
     }
-    val env = sf.geometry.getEnvelopeInternal
     geocq.add(sf)
-    cache.put(id, FeatureHolder(sf, env))
+    cache.put(id, sf)
   }
 
-  override def getFeatureById(id: String): FeatureHolder = cache.getIfPresent(id)
+  override def getFeatureById(id: String): SimpleFeature = cache.getIfPresent(id)
 
   /**
     * WARNING: this method is not thread-safe. CQEngine's ConcurrentIndexedCollection

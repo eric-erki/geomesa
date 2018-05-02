@@ -34,14 +34,14 @@ class KafkaDataStore(override val zookeepers: String,
                      fsFactory: FeatureSourceFactory,
                      val namespaceStr: String = null)
   extends ContentDataStore
-  with KafkaDataStoreSchemaManager
-  with LazyLogging {
+    with KafkaDataStoreSchemaManager
+    with LazyLogging {
 
   kds =>
 
   setNamespaceURI(namespaceStr)
 
-  override def createTypeNames() = getNames.asScala.map(name => new NameImpl(getNamespaceURI, name.getLocalPart) : Name).asJava
+  override def createTypeNames() = getNames.asScala.map(name => new NameImpl(getNamespaceURI, name.getLocalPart): Name).asJava
 
   case class FeatureSourceCacheKey(entry: ContentEntry, query: Query)
 
@@ -62,6 +62,7 @@ class KafkaDataStore(override val zookeepers: String,
   }
 
   override def createFeatureSource(entry: ContentEntry) = createFeatureSource(entry, Query.ALL)
+
   private def createFeatureSource(entry: ContentEntry, query: Query) = {
     // Query has an issue when start index is not set - hashCode throws an exception
     // However, Query.ALL has an overridden hashCode that ignores startIndex
@@ -93,10 +94,11 @@ object KafkaDataStoreFactoryParams {
   val CONSISTENCY_CHECK = new Param("consistencyCheck", classOf[java.lang.Long], "Milliseconds between checking the feature cache for consistency. Leave blank or use -1 to not check for consistency.", false)
   val CLEANUP_LIVE_CACHE   = new Param("cleanUpCache", classOf[java.lang.Boolean], "Run a thread to clean up the live feature cache if set to true. False by default. use 'cleanUpCachePeriod' to configure the length of time between cache cleanups. Every second by default", false)
   val CACHE_CLEANUP_PERIOD = new Param("cleanUpCachePeriod", classOf[String], "Configure the time period between cache cleanups. Default is every ten seconds. This parameter is not used if 'cleanUpCache' is false.", false, "10s")
+  val CACHE_X_BUCKETS    = new Param("kafka.cache.buckets.x", classOf[Integer], "Number of buckets in the x-dimension of the spatial index", false, 360)
+  val CACHE_Y_BUCKETS    = new Param("kafka.cache.buckets.y", classOf[Integer], "Number of buckets in the y-dimension of the spatial index", false, 180)
   val USE_CQ_LIVE_CACHE  = new Param("useCQCache", classOf[java.lang.Boolean], "Use CQEngine-based implementation of live feature cache. False by default.", false, false)
   val COLLECT_QUERY_STAT = new Param("collectQueryStats", classOf[java.lang.Boolean], "Enable monitoring stats for feature store.", false)
   val AUTO_OFFSET_RESET  = new Param("autoOffsetReset", classOf[java.lang.String], "What offset to reset to when there is no initial offset in ZooKeeper or if an offset is out of range. Default is largest.", false, "largest", Map(Parameter.OPTIONS -> Lists.newArrayList("largest","smallest")).asJava)
-
 }
 
 object KafkaDataStore {
@@ -121,7 +123,7 @@ class KafkaDataStoreFactory extends DataStoreFactorySpi {
     val namespace = Option(NAMESPACE_PARAM.lookUp(params)).map(_.asInstanceOf[String]).orNull
     val zkPath = KafkaDataStoreHelper.cleanZkPath(ZK_PATH.lookUp(params).asInstanceOf[String])
 
-    val partitions  = Option(TOPIC_PARTITIONS.lookUp(params)).map(_.toString.toInt).getOrElse(1)
+    val partitions = Option(TOPIC_PARTITIONS.lookUp(params)).map(_.toString.toInt).getOrElse(1)
     val replication = Option(TOPIC_REPLICATION.lookUp(params)).map(_.toString.toInt).getOrElse(1)
 
     val fsFactory = createFeatureSourceFactory(broker, zkHost, params)
@@ -149,7 +151,7 @@ class KafkaDataStoreFactory extends DataStoreFactorySpi {
   override def getDescription: String = "Apache Kafka\u2122 distributed messaging queue"
 
   override def getParametersInfo: Array[Param] =
-    Array(KAFKA_BROKER_PARAM, ZOOKEEPERS_PARAM, ZK_PATH, EXPIRATION_PERIOD, CONSISTENCY_CHECK, CLEANUP_LIVE_CACHE, CACHE_CLEANUP_PERIOD, USE_CQ_LIVE_CACHE, TOPIC_PARTITIONS, TOPIC_REPLICATION, PRODUCER_CFG_PARAM, CONSUMER_CFG_PARAM, NAMESPACE_PARAM, COLLECT_QUERY_STAT, AUTO_OFFSET_RESET)
+    Array(KAFKA_BROKER_PARAM, ZOOKEEPERS_PARAM, ZK_PATH, EXPIRATION_PERIOD, CONSISTENCY_CHECK, CLEANUP_LIVE_CACHE, CACHE_CLEANUP_PERIOD, USE_CQ_LIVE_CACHE, CACHE_X_BUCKETS, CACHE_Y_BUCKETS, TOPIC_PARTITIONS, TOPIC_REPLICATION, PRODUCER_CFG_PARAM, CONSUMER_CFG_PARAM, NAMESPACE_PARAM, COLLECT_QUERY_STAT, AUTO_OFFSET_RESET)
 
   override def canProcess(params: ju.Map[String, Serializable]): Boolean =
     params.containsKey(KAFKA_BROKER_PARAM.key) && params.containsKey(ZOOKEEPERS_PARAM.key)
