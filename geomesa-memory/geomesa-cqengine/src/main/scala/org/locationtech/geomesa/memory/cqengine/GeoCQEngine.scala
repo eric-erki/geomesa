@@ -18,13 +18,15 @@ import com.googlecode.cqengine.index.radix.RadixTreeIndex
 import com.googlecode.cqengine.index.unique.UniqueIndex
 import com.googlecode.cqengine.{ConcurrentIndexedCollection, IndexedCollection}
 import com.googlecode.cqengine.query.option.DeduplicationStrategy
-import com.googlecode.cqengine.query.{QueryFactory, Query}
-import com.googlecode.cqengine.query.simple.{Equal, All}
+import com.googlecode.cqengine.query.{Query, QueryFactory}
+import com.googlecode.cqengine.query.simple.{All, Equal}
 import com.typesafe.scalalogging.LazyLogging
 import com.vividsolutions.jts.geom.Geometry
 import org.locationtech.geomesa.memory.cqengine.index.GeoIndex
 import org.locationtech.geomesa.memory.cqengine.utils._
+import org.locationtech.geomesa.utils.collection.SelfClosingIterator
 import org.locationtech.geomesa.utils.geotools._
+import org.locationtech.geomesa.utils.index.SpatialIndex
 import org.opengis.feature.`type`.AttributeDescriptor
 import org.opengis.feature.simple.{SimpleFeature, SimpleFeatureType}
 import org.opengis.filter._
@@ -33,7 +35,8 @@ import scala.collection.JavaConversions._
 
 class GeoCQEngine(val sft: SimpleFeatureType,
                   enableFidIndex: Boolean = false,
-                  enableGeomIndex: Boolean = true) extends LazyLogging {
+                  enableGeomIndex: Boolean = true,
+                  geomBuckets: (Int, Int) = (360, 180)) extends SpatialIndex[SimpleFeature] with LazyLogging {
   //val cqcache = CQIndexingOptions.buildIndexedCollection(sft)
   val cqcache: IndexedCollection[SimpleFeature] = new ConcurrentIndexedCollection[SimpleFeature]()
   val attributes = SFTAttributes(sft)
@@ -46,6 +49,20 @@ class GeoCQEngine(val sft: SimpleFeatureType,
 
   // Add other indexes
   sft.getAttributeDescriptors.foreach {addIndex(_)}
+
+  override def insert(x: Double, y: Double, key: String, item: SimpleFeature): Unit = cqcache.add(item)
+  override def remove(x: Double, y: Double, key: String): SimpleFeature = {
+    getById(key) match {
+      case None => null
+      case Some(item) => cqcache.remove(item); item
+    }
+  }
+  override def get(x: Double, y: Double, key: String): SimpleFeature = getById(key).orNull
+  override def query(xmin: Double, ymin: Double, xmax: Double, ymax: Double): Iterator[SimpleFeature] = {
+    import org.locationtech.geomesa.filter.ff
+    SelfClosingIterator(getReaderForFilter(ff.bbox(sft.getGeometryDescriptor.getLocalName, xmin, ymin, xmax, ymax, "EPSG:4326")))
+  }
+  override def size(): Int = cqcache.size()
 
   def remove(sf: SimpleFeature): Boolean = {
     cqcache.remove(sf)
@@ -137,7 +154,7 @@ class GeoCQEngine(val sft: SimpleFeatureType,
 
   private def addGeoIndex(ad: AttributeDescriptor): Unit = {
     val geom: Attribute[SimpleFeature, Geometry] = attributes.lookup[Geometry](ad.getLocalName)
-    cqcache.addIndex(GeoIndex.onAttribute(sft, geom))
+    cqcache.addIndex(GeoIndex.onAttribute(sft, geom, geomBuckets._1, geomBuckets._2))
   }
 
   private def addNavigableIndex(ad: AttributeDescriptor): Unit = {

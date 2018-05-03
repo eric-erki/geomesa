@@ -18,11 +18,14 @@ import org.geotools.data.store.ContentEntry
 import org.geotools.data.{FeatureEvent, Query}
 import org.locationtech.geomesa.kafka._
 import org.locationtech.geomesa.kafka08.consumer.KafkaConsumerFactory
+import org.locationtech.geomesa.memory.cqengine.GeoCQEngine
 import org.locationtech.geomesa.utils.geotools._
-import org.opengis.feature.simple.SimpleFeatureType
+import org.locationtech.geomesa.utils.index.{BucketIndex, SpatialIndex}
+import org.opengis.feature.simple.{SimpleFeature, SimpleFeatureType}
 import org.opengis.filter.Filter
 
 import scala.collection.mutable
+import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
 class LiveKafkaConsumerFeatureSource(e: ContentEntry,
@@ -41,14 +44,14 @@ class LiveKafkaConsumerFeatureSource(e: ContentEntry,
   extends KafkaConsumerFeatureSource(e, sft, q, monitor) with Runnable with Closeable with LazyLogging {
 
   private[kafka08] val featureCache: LiveFeatureCache = {
-    import RichSimpleFeatureType.RichSimpleFeatureType
-    if (useCQCache) {
-      new LiveFeatureCacheCQEngine(sft, expirationPeriod)
-    } else if (sft.isPoints) {
-      new LiveFeatureCacheGuavaPoints(sft, expirationPeriod, consistencyCheck, buckets)
-    } else {
-      new LiveFeatureCacheGuava(sft, expirationPeriod, consistencyCheck, buckets)
-    }
+    val index: SpatialIndex[SimpleFeature] =
+      if (useCQCache) {
+        new GeoCQEngine(sft, geomBuckets = buckets)
+      } else {
+        new BucketIndex(buckets._1, buckets._2)
+      }
+    val expiry = expirationPeriod.map(Duration(_, TimeUnit.MILLISECONDS)).getOrElse(Duration.Inf)
+    LiveFeatureCache(sft, expiry, index)
   }
 
   private lazy val contentState = entry.getState(getTransaction)
@@ -119,12 +122,6 @@ class LiveKafkaConsumerFeatureSource(e: ContentEntry,
       }
     }
   })
-
-  if (expirationPeriod.isDefined && cleanUpCache) {
-    ses.scheduleAtFixedRate(new Runnable() {
-      override def run(): Unit = featureCache.cleanUp()
-    }, 0, cleanUpCachePeriod, TimeUnit.MILLISECONDS)
-  }
 
   override def run(): Unit =
     while (running.get) {

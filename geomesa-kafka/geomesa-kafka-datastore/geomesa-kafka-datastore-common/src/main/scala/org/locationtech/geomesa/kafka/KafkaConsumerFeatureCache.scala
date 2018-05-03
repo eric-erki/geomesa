@@ -8,10 +8,11 @@
 
 package org.locationtech.geomesa.kafka
 
+import org.geotools.data.FeatureReader
 import org.geotools.data.simple.SimpleFeatureReader
 import org.locationtech.geomesa.filter.index.SpatialIndexSupport
 import org.locationtech.geomesa.utils.collection.SelfClosingIterator
-import org.opengis.feature.simple.SimpleFeature
+import org.opengis.feature.simple.{SimpleFeature, SimpleFeatureType}
 import org.opengis.filter._
 
 import scala.collection.JavaConversions._
@@ -34,13 +35,13 @@ trait KafkaConsumerFeatureCache extends SpatialIndexSupport {
     }
   }
 
-  override def getReaderForFilter(filter: Filter): SimpleFeatureReader =
+  override def getReaderForFilter(filter: Filter): FeatureReader[SimpleFeatureType, SimpleFeature] =
     filter match {
       case f: Id => fid(f)
       case _ => super.getReaderForFilter(filter)
     }
 
-  def fid(ids: Id): SimpleFeatureReader =
+  def fid(ids: Id): FeatureReader[SimpleFeatureType, SimpleFeature] =
     reader(ids.getIDs.flatMap(id => features.get(id.toString)).iterator)
 }
 

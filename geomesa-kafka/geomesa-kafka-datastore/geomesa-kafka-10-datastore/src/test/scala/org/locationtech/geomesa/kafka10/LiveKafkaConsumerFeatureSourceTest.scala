@@ -118,9 +118,6 @@ class LiveKafkaConsumerFeatureSourceTest extends Specification with HasEmbeddedK
         features.hasNext must beFalse
       }
 
-      // force the cache cleanup - normally this would happen during additional reads and writes
-      consumerFC.asInstanceOf[LiveKafkaConsumerFeatureSource].featureCache.cleanUp()
-
       // verify feature has expired - hit the spatial index
       {
         val features = consumerFC.getFeatures(bbox).features()

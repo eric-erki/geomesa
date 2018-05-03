@@ -131,13 +131,13 @@ class StreamFeatureStore(entry: ContentEntry,
 
   override def allFeatures(): Iterator[SimpleFeature] = features.asMap().valuesIterator.map(_.sf)
 
-  override def getReaderForFilter(f: Filter): SimpleFeatureReader =
+  override def getReaderForFilter(f: Filter): FeatureReader[SimpleFeatureType, SimpleFeature] =
     f match {
       case id: FidFilterImpl => fid(id)
       case _                 => super.getReaderForFilter(f)
     }
 
-  def fid(ids: FidFilterImpl): SimpleFeatureReader = {
+  def fid(ids: FidFilterImpl): FeatureReader[SimpleFeatureType, SimpleFeature]  = {
     val iter = ids.getIDs.flatMap(id => Option(features.getIfPresent(id.toString)).map(_.sf)).iterator
     reader(iter)
   }

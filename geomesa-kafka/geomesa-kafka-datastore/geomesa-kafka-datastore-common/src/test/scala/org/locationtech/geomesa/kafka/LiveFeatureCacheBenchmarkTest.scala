@@ -15,8 +15,11 @@ import org.geotools.feature.simple.SimpleFeatureBuilder
 import org.geotools.filter.text.ecql.ECQL
 import org.joda.time.{DateTime, DateTimeZone, Instant}
 import org.junit.runner.RunWith
+import org.locationtech.geomesa.kafka.KafkaConsumerTestData.sft
+import org.locationtech.geomesa.memory.cqengine.GeoCQEngine
 import org.locationtech.geomesa.utils.collection.SelfClosingIterator
 import org.locationtech.geomesa.utils.geotools.SimpleFeatureTypes
+import org.locationtech.geomesa.utils.index.BucketIndex
 import org.locationtech.geomesa.utils.text.WKTUtils
 import org.opengis.feature.simple.SimpleFeature
 import org.opengis.filter._
@@ -24,6 +27,7 @@ import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 
 import scala.collection.JavaConversions._
+import scala.concurrent.duration.Duration
 import scala.util.Random
 
 @RunWith(classOf[JUnitRunner])
@@ -216,10 +220,9 @@ class LiveFeatureCacheBenchmarkTest extends Specification {
   val featsUpdate = (0 until nFeats).map(buildFeature)
 
   // load different LiveFeatureCache implementations
-  implicit val ticker = Ticker.systemTicker()
-  val lfc = new LiveFeatureCacheGuava(sft, None, None, (360, 180))
+  val lfc = LiveFeatureCache(sft, Duration.Inf, new BucketIndex())
   //val h2  = new LiveFeatureCacheH2(sft)
-  val cq = new LiveFeatureCacheCQEngine(sft, None)
+  val cq = LiveFeatureCache(sft, Duration.Inf, new GeoCQEngine(sft))
 
   "LiveFeatureCacheCQEngine " should {
     "benchmark" >> {
@@ -250,8 +253,7 @@ class LiveFeatureCacheBenchmarkTest extends Specification {
         Seq("lfc", "cq", "cqdd"),
         Seq(
           f => SelfClosingIterator(lfc.getReaderForFilter(f)).length,
-          f => SelfClosingIterator(cq.geocq.queryCQ(f, false)).length,
-          f => SelfClosingIterator(cq.geocq.queryCQ(f, true)).length),
+          f => SelfClosingIterator(cq.getReaderForFilter(f)).length),
         filters)
 
       true must equalTo(true)

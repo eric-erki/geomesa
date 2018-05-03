@@ -8,12 +8,10 @@
 
 package org.locationtech.geomesa.utils.index
 
-import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
 import com.vividsolutions.jts.geom.Envelope
 import org.locationtech.geomesa.utils.geotools.GridSnap
-import org.locationtech.geomesa.utils.index.SpatialIndex.PointIndex
 
 import scala.annotation.tailrec
 
@@ -23,31 +21,57 @@ import scala.annotation.tailrec
   */
 class BucketIndex[T](xBuckets: Int = 360,
                      yBuckets: Int = 180,
-                     extents: Envelope = new Envelope(-180.0, 180.0, -90.0, 90.0)) extends PointIndex[T] {
+                     extents: Envelope = new Envelope(-180.0, 180.0, -90.0, 90.0)) extends SpatialIndex[T] {
 
   private val gridSnap = new GridSnap(extents, xBuckets, yBuckets)
   // create the buckets up front to avoid having to synchronize the whole array
   private val buckets = Array.fill(xBuckets, yBuckets)(new LazySet)
 
-  override def insert(x: Double, y: Double, item: T): Unit = {
+  override def insert(x: Double, y: Double, key: String, item: T): Unit = {
     val i = snapX(x)
     val j = snapY(y)
-    buckets(i)(j).add(item)
+    buckets(i)(j).put(key, item)
   }
 
-  override def remove(x: Double, y: Double, item: T): Boolean = {
+  override def remove(x: Double, y: Double, key: String): T = {
     val i = snapX(x)
     val j = snapY(y)
-    buckets(i)(j).remove(item)
+    buckets(i)(j).remove(key)
   }
 
-  override def query(envelope: Envelope): Iterator[T] = {
-    val mini = snapX(envelope.getMinX)
-    val maxi = snapX(envelope.getMaxX)
-    val minj = snapY(envelope.getMinY)
-    val maxj = snapY(envelope.getMaxY)
+  override def get(x: Double, y: Double, key: String): T = {
+    val i = snapX(x)
+    val j = snapY(y)
+    buckets(i)(j).get(key)
+  }
 
-    new BucketIterator(mini, maxi, minj, maxj)
+  override def query(xmin: Double, ymin: Double, xmax: Double, ymax: Double): Iterator[T] =
+    new BucketIterator(snapX(xmin), snapX(xmax), snapY(ymin), snapY(ymax))
+
+  override def size(): Int = {
+    var size = 0
+    var i = 0
+    while (i < xBuckets) {
+      var j = 0
+      while (j < yBuckets) {
+        size += buckets(i)(j).size()
+        j += 1
+      }
+      i += 1
+    }
+    size
+  }
+
+  override def clear(): Unit = {
+    var i = 0
+    while (i < xBuckets) {
+      var j = 0
+      while (j < yBuckets) {
+        buckets(i)(j).clear()
+        j += 1
+      }
+      i += 1
+    }
   }
 
   private def snapX(x: Double): Int = {
@@ -87,12 +111,23 @@ class BucketIndex[T](xBuckets: Int = 360,
 
     // we use a ConcurrentHashSet, which gives us iterators that aren't affected by modifications to the backing set
     // we make it lazy as many buckets might not actually be used
-    lazy private val set = Collections.newSetFromMap(new ConcurrentHashMap[T, java.lang.Boolean])
 
-    def iterator(): java.util.Iterator[T] = set.iterator()
+    @volatile
+    private var initialized = false
 
-    def add(e: T): Boolean = set.add(e)
+    lazy private val map = try { new ConcurrentHashMap[String, T]() } finally { initialized = true }
+    lazy private val values = map.values
 
-    def remove(o: scala.Any): Boolean = set.remove(o)
+    def iterator(): java.util.Iterator[T] = values.iterator()
+
+    def put(k: String, v: T): T = map.put(k, v)
+
+    def get(k: String): T = map.get(k)
+
+    def remove(k: String): T = map.remove(k)
+
+    def size(): Int = if (initialized) { map.size() } else { 0 }
+
+    def clear(): Unit = if (initialized) { map.clear() }
   }
 }
