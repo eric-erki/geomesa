@@ -4,6 +4,12 @@ Extending the Converter Library
 There are two ways to extend the converter library - adding new
 transformation functions and adding new data formats.
 
+Adding Scripting Functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The easiest way to extend functionality is by defining custom Javascript functions. See
+:ref:`convert_scripting_functions` for more details.
+
 Adding New Transformation Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -47,7 +53,7 @@ Adding Functions to the Geomesa Classpath
 
 After creating a JAR file with your transformation function and factory
 you can add these to the ``GEOMESA_EXTRA_CLASSPATHS`` environmental variable
-in order to expose them to the command line tools and distributed (mapreduce)
+in order to expose them to the command line tools and distributed (map-reduce)
 ingest jobs.
 
 A example of ingest with a transforms on the classpath is below:

@@ -612,7 +612,7 @@ object RelationUtils extends LazyLogging {
     val compiledCQL = filters.flatMap(SparkUtils.sparkFilterToCQLFilter).foldLeft[org.opengis.filter.Filter](filt) { (l, r) => ff.and(l, r) }
     val requiredAttributes = requiredColumns.filterNot(_ == "__fid__")
     val rdd = GeoMesaSpark(params).rdd(
-      new Configuration(), ctx, params,
+      new Configuration(ctx.hadoopConfiguration), ctx, params,
       new Query(params(GEOMESA_SQL_FEATURE), compiledCQL, requiredAttributes))
 
     val extractors = SparkUtils.getExtractors(requiredColumns, schema)
@@ -696,12 +696,16 @@ object SparkUtils {
         val index = requiredAttributes.indexOf(col)
         val schemaIndex = schema.fieldIndex(col)
         val fieldType = schema.fields(schemaIndex).dataType
-        sf: SimpleFeature =>
-          if ( fieldType == TimestampType ) {
-            new Timestamp(sf.getAttribute(index).asInstanceOf[Date].getTime)
-          } else {
-            sf.getAttribute(index)
+        if (fieldType == TimestampType) {
+          sf: SimpleFeature => {
+            val attr = sf.getAttribute(index)
+            if (attr == null) { null } else {
+              new Timestamp(attr.asInstanceOf[Date].getTime)
+            }
           }
+        } else {
+          sf: SimpleFeature => sf.getAttribute(index)
+        }
     }
   }
 
