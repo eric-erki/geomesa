@@ -10,8 +10,8 @@ package org.locationtech.geomesa.utils.index
 
 import java.util.concurrent.locks.{Lock, ReentrantReadWriteLock}
 
-import com.vividsolutions.jts.geom.Envelope
-import com.vividsolutions.jts.index.quadtree.Quadtree
+import org.locationtech.jts.geom.Envelope
+import org.locationtech.jts.index.quadtree.Quadtree
 
 /**
  * Thread safe quad tree

@@ -12,7 +12,7 @@ import java.io.Closeable
 import java.util.concurrent._
 
 import com.typesafe.scalalogging.LazyLogging
-import com.vividsolutions.jts.geom.{Geometry, Point}
+import org.locationtech.jts.geom.{Geometry, Point}
 import org.locationtech.geomesa.filter.index.SpatialIndexSupport
 import org.opengis.feature.simple.{SimpleFeature, SimpleFeatureType}
 import org.opengis.filter.Filter

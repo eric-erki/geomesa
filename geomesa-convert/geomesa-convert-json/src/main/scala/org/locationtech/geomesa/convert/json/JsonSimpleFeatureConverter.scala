@@ -15,8 +15,8 @@ import com.google.gson.{JsonArray, JsonElement, JsonNull, JsonObject}
 import com.jayway.jsonpath.spi.json.GsonJsonProvider
 import com.jayway.jsonpath.{Configuration, JsonPath, PathNotFoundException}
 import com.typesafe.config.Config
-import com.vividsolutions.jts.geom._
-import com.vividsolutions.jts.geom.impl.CoordinateArraySequence
+import org.locationtech.jts.geom._
+import org.locationtech.jts.geom.impl.CoordinateArraySequence
 import org.apache.commons.io.IOUtils
 import org.locationtech.geomesa.convert.LineMode.LineMode
 import org.locationtech.geomesa.convert.Transformers.Expr

@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.{io, util}
 
 import com.typesafe.scalalogging.LazyLogging
-import com.vividsolutions.jts.geom.Point
+import org.locationtech.jts.geom.Point
 import kafka.admin.AdminUtils
 import org.apache.curator.framework.CuratorFrameworkFactory
 import org.apache.curator.retry.ExponentialBackoffRetry

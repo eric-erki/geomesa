@@ -8,7 +8,7 @@
 
 package org.locationtech.geomesa.spark.jts
 
-import com.vividsolutions.jts.geom._
+import org.locationtech.jts.geom._
 import org.apache.spark.sql.{Column, Encoder, TypedColumn}
 import org.locationtech.geomesa.spark.jts.encoders.SpatialEncoders
 import org.locationtech.geomesa.spark.jts.util.SQLFunctionHelper._

@@ -11,7 +11,7 @@ package org.locationtech.geomesa.convert.xml
 import java.io.{ByteArrayInputStream, File, FileInputStream}
 
 import com.typesafe.config.ConfigFactory
-import com.vividsolutions.jts.geom.Point
+import org.locationtech.jts.geom.Point
 import org.junit.runner.RunWith
 import org.locationtech.geomesa.convert.SimpleFeatureConverters
 import org.locationtech.geomesa.utils.geotools.SimpleFeatureTypes

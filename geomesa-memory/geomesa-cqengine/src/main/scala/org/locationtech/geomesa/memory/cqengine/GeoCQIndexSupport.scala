@@ -8,7 +8,7 @@
 
 package org.locationtech.geomesa.memory.cqengine
 
-import com.vividsolutions.jts.geom.Envelope
+import org.locationtech.jts.geom.Envelope
 import org.locationtech.geomesa.filter.index.SpatialIndexSupport
 import org.locationtech.geomesa.memory.cqengine.GeoCQIndexSupport.GeoCQIndex
 import org.locationtech.geomesa.utils.index.SpatialIndex

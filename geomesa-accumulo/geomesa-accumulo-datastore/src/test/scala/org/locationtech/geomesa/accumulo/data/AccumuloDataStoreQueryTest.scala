@@ -10,7 +10,7 @@ package org.locationtech.geomesa.accumulo.data
 
 import java.util.{Collections, Date}
 
-import com.vividsolutions.jts.geom.Coordinate
+import org.locationtech.jts.geom.Coordinate
 import org.geotools.data._
 import org.geotools.factory.{CommonFactoryFinder, Hints}
 import org.geotools.feature.NameImpl

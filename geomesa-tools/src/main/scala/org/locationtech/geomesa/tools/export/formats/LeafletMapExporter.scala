@@ -11,7 +11,7 @@ package org.locationtech.geomesa.tools.export.formats
 import java.io._
 
 import com.typesafe.scalalogging.LazyLogging
-import com.vividsolutions.jts.geom.{Coordinate, Geometry}
+import org.locationtech.jts.geom.{Coordinate, Geometry}
 import org.geotools.geojson.feature.FeatureJSON
 import org.locationtech.geomesa.tools.Command.user
 import org.locationtech.geomesa.tools.export.formats.LeafletMapExporter.{SimpleCoordinate, _}

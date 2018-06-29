@@ -10,7 +10,7 @@ package org.locationtech.geomesa.utils.geotools
 
 import java.util.{Date, UUID}
 
-import com.vividsolutions.jts.geom._
+import org.locationtech.jts.geom._
 import org.geotools.feature.AttributeTypeBuilder
 import org.opengis.feature.`type`.AttributeDescriptor
 import org.opengis.feature.simple.SimpleFeatureType

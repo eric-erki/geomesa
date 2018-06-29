@@ -9,7 +9,7 @@
 package org.locationtech.geomesa.convert.fixedwidth
 
 import com.typesafe.config.ConfigFactory
-import com.vividsolutions.jts.geom.{Coordinate, Point}
+import org.locationtech.jts.geom.{Coordinate, Point}
 import org.junit.runner.RunWith
 import org.locationtech.geomesa.convert.SimpleFeatureConverters
 import org.locationtech.geomesa.utils.geotools.SimpleFeatureTypes

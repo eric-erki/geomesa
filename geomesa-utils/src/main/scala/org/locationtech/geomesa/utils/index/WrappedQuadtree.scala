@@ -8,8 +8,8 @@
 
 package org.locationtech.geomesa.utils.index
 
-import com.vividsolutions.jts.geom.Envelope
-import com.vividsolutions.jts.index.quadtree.Quadtree
+import org.locationtech.jts.geom.Envelope
+import org.locationtech.jts.index.quadtree.Quadtree
 
 import scala.collection.JavaConverters._
 

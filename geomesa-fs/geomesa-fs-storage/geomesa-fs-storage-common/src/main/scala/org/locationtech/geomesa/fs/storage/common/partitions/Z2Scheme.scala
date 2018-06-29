@@ -11,7 +11,7 @@ package org.locationtech.geomesa.fs.storage.common.partitions
 import java.util.{Collections, Optional}
 import java.util.regex.Pattern
 
-import com.vividsolutions.jts.geom.{Geometry, Point}
+import org.locationtech.jts.geom.{Geometry, Point}
 import org.locationtech.geomesa.curve.Z2SFC
 import org.locationtech.geomesa.filter.{FilterHelper, FilterValues}
 import org.locationtech.geomesa.fs.storage.api.{PartitionScheme, PartitionSchemeFactory}

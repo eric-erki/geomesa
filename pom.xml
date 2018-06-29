@@ -69,10 +69,10 @@
         <scala.parsers.version>1.0.6</scala.parsers.version>
 
         <geoserver.version>2.12.0</geoserver.version>
-        <gt.version>18.0</gt.version>
-        <jaiext.version>1.0.16</jaiext.version>
+        <gt.version>20-SNAPSHOT</gt.version>
+        <jaiext.version>1.0-SNAPSHOT</jaiext.version>
         <imageio-ext.version>1.1.18</imageio-ext.version>
-        <jts.version>1.14.0</jts.version>
+        <jts.version>1.15.1</jts.version>
         <avro.version>1.7.5</avro.version>
         <parquet.version>1.9.0</parquet.version>
         <orc.version>1.4.4</orc.version>
@@ -347,19 +347,19 @@
                 <version>2.3</version>
             </dependency>
             <dependency>
-                <groupId>com.vividsolutions</groupId>
+                <groupId>org.locationtech.jts</groupId>
                 <artifactId>jts-io</artifactId>
                 <version>${jts.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.vividsolutions</groupId>
+                <groupId>org.locationtech.jts</groupId>
                 <artifactId>jts-core</artifactId>
                 <version>${jts.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.locationtech.spatial4j</groupId>
                 <artifactId>spatial4j</artifactId>
-                <version>0.6</version>
+                <version>0.7</version>
             </dependency>
             <dependency>
                 <!-- 'works with' due to license issues -->
@@ -536,7 +536,7 @@
                         <artifactId>jt-utils</artifactId>
                     </exclusion>
                     <exclusion>
-                        <groupId>com.vividsolutions</groupId>
+                        <groupId>org.locationtech.jts</groupId>
                         <artifactId>jts-example</artifactId>
                     </exclusion>
                     <exclusion>
@@ -742,7 +742,7 @@
                         <artifactId>jai_imageio</artifactId>
                     </exclusion>
                     <exclusion>
-                        <groupId>com.vividsolutions</groupId>
+                        <groupId>org.locationtech.jts</groupId>
                         <artifactId>jts-example</artifactId>
                     </exclusion>
                     <exclusion>
@@ -773,7 +773,7 @@
                         <artifactId>jai_codec</artifactId>
                     </exclusion>
                     <exclusion>
-                        <groupId>com.vividsolutions</groupId>
+                        <groupId>org.locationtech.jts</groupId>
                         <artifactId>jts-example</artifactId>
                     </exclusion>
                     <exclusion>
@@ -804,7 +804,7 @@
                         <artifactId>jai_imageio</artifactId>
                     </exclusion>
                     <exclusion>
-                        <groupId>com.vividsolutions</groupId>
+                        <groupId>org.locationtech.jts</groupId>
                         <artifactId>jts-example</artifactId>
                     </exclusion>
                 </exclusions>
