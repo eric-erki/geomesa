@@ -70,7 +70,7 @@
 
         <geoserver.version>2.12.0</geoserver.version>
         <gt.version>20-SNAPSHOT</gt.version>
-        <jaiext.version>1.0-SNAPSHOT</jaiext.version>
+        <jaiext.version>1.1.0</jaiext.version>
         <imageio-ext.version>1.1.18</imageio-ext.version>
         <jts.version>1.15.1</jts.version>
         <avro.version>1.7.5</avro.version>
