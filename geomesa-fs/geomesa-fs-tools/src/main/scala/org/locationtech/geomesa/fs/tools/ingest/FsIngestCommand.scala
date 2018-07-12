@@ -9,10 +9,12 @@
 package org.locationtech.geomesa.fs.tools.ingest
 
 import java.io.File
+import java.net.URL
 
 import com.beust.jcommander.{Parameter, ParameterException, Parameters}
 import com.typesafe.config.Config
 import org.apache.hadoop.fs.Path
+import org.geotools.data.DataStoreFinder
 import org.locationtech.geomesa.fs.FileSystemDataStore
 import org.locationtech.geomesa.fs.storage.orc.OrcFileSystemStorage
 import org.locationtech.geomesa.fs.tools.FsDataStoreCommand
@@ -21,14 +23,19 @@ import org.locationtech.geomesa.fs.tools.data.FsCreateSchemaCommand
 import org.locationtech.geomesa.fs.tools.ingest.FileSystemConverterJob.{OrcConverterJob, ParquetConverterJob}
 import org.locationtech.geomesa.fs.tools.ingest.FsIngestCommand.{FileSystemConverterIngest, FsIngestParams}
 import org.locationtech.geomesa.parquet.ParquetFileSystemStorage
+import org.locationtech.geomesa.tools.Command
 import org.locationtech.geomesa.tools.DistributedRunParam.RunModes.RunMode
 import org.locationtech.geomesa.tools.ingest.AbstractIngest.StatusCallback
 import org.locationtech.geomesa.tools.ingest._
 import org.locationtech.geomesa.tools.utils.DataFormats
 import org.locationtech.geomesa.utils.classpath.ClassPathUtils
+import org.locationtech.geomesa.utils.geotools.GeneralShapefileIngest
+import org.locationtech.geomesa.utils.io.PathUtils
+import org.locationtech.geomesa.utils.text.TextTools
 import org.opengis.feature.simple.SimpleFeatureType
 
 import scala.collection.JavaConversions._
+import scala.collection.parallel.ForkJoinTaskSupport
 
 // TODO we need multi threaded ingest for this
 class FsIngestCommand extends IngestCommand[FileSystemDataStore] with FsDataStoreCommand {
@@ -44,18 +51,22 @@ class FsIngestCommand extends IngestCommand[FileSystemDataStore] with FsDataStor
 
   override def execute(): Unit = {
     // validate arguments
-    if (params.config == null) {
-      throw new ParameterException("Converter config argument is required")
+    if(params.fmt == DataFormats.Shp) {
+      super.execute()
+    } else {
+      if (params.config == null) {
+        throw new ParameterException("Converter config argument is required")
+      }
+      if (params.spec == null) {
+        throw new ParameterException("SimpleFeatureType specification argument is required")
+      }
+      super.execute()
     }
-    if (params.spec == null) {
-      throw new ParameterException("SimpleFeatureType specification argument is required")
-    }
-    if (params.fmt == DataFormats.Shp) {
-      // TODO
-      throw new ParameterException("Shapefile ingest is not currently supported for FileDataStore")
-    }
+  }
 
-    super.execute()
+
+  override protected def createShpIngest(): Runnable = {
+    new FsShapefileIngest(connection, Option(params.featureName), params.files, params)
   }
 
   override protected def createConverterIngest(sft: SimpleFeatureType, converterConfig: Config): Runnable = {
@@ -72,6 +83,57 @@ class FsIngestCommand extends IngestCommand[FileSystemDataStore] with FsDataStor
         Option(params.tempDir).map(new Path(_)),
         Option(params.reducers))
   }
+}
+
+class FsShapefileIngest(connection: java.util.Map[String, String],
+                        typeName: Option[String],
+                        files: Seq[String],
+                        params: FsIngestParams) extends Runnable {
+  override def run(): Unit = {
+    import TextTools._
+    Command.user.info(s"Ingesting ${getPlural(files.length, "file")}")
+
+    val start = System.currentTimeMillis()
+
+    // If someone is ingesting file from hdfs, S3, or wasb we add the Hadoop URL Factories to the JVM.
+/*
+TODO: Local only for now
+    if (files.exists(PathUtils.isRemote)) {
+      import org.apache.hadoop.fs.FsUrlStreamHandlerFactory
+      val factory = new FsUrlStreamHandlerFactory
+      URL.setURLStreamHandlerFactory(factory)
+    }
+*/
+
+    val ds = DataStoreFinder.getDataStore(connection)
+
+
+    val (ingested, failed) = try {
+/*
+      val seq = if (threads > 1) {
+        val parfiles = files.par
+        parfiles.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(threads))
+        parfiles
+      } else {
+        files
+      }
+*/
+      val seq = files
+      seq.map { f =>
+        val shapefile = GeneralShapefileIngest.getShapefileDatastore(f)
+        val schema = shapefile.getFeatureSource.getSchema
+        FsCreateSchemaCommand.setOptions(schema, params)
+        ds.createSchema(schema)
+        GeneralShapefileIngest.ingestToDataStore(f, ds, typeName)
+      }.reduce((l: (Long, Long), r: (Long, Long)) => (l._1 + r._1, l._2 + r._2))
+    } finally {
+      ds.dispose()
+    }
+
+    Command.user.info(s"Shapefile ingestion complete in ${TextTools.getTime(start)}")
+    Command.user.info(AbstractIngest.getStatInfo(ingested, failed))
+  }
+
 }
 
 object FsIngestCommand {
