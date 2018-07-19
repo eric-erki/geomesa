@@ -16,13 +16,16 @@ import org.locationtech.geomesa.utils.geotools.GeneralShapefileIngest
 import org.locationtech.geomesa.utils.io.PathUtils
 import org.locationtech.geomesa.utils.text.TextTools
 import org.locationtech.geomesa.utils.text.TextTools.getPlural
+import org.opengis.feature.simple.SimpleFeatureType
 
+import scala.collection.GenSeq
 import scala.collection.parallel.ForkJoinTaskSupport
 
 class ShapefileIngest(connection: java.util.Map[String, String],
                       typeName: Option[String],
                       files: Seq[String],
-                      threads: Int) extends Runnable {
+                      threads: Int,
+                      dataStoreSchemaExtensions: SimpleFeatureType => Unit) extends Runnable {
 
   override def run(): Unit = {
     Command.user.info(s"Ingesting ${getPlural(files.length, "file")} with ${getPlural(threads.toLong, "thread")}")
@@ -39,14 +42,14 @@ class ShapefileIngest(connection: java.util.Map[String, String],
     val ds = DataStoreFinder.getDataStore(connection)
 
     val (ingested, failed) = try {
-      val seq = if (threads > 1) {
+      val seq: GenSeq[String] = if (threads > 1) {
         val parfiles = files.par
         parfiles.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(threads))
         parfiles
       } else {
         files
       }
-      seq.map(GeneralShapefileIngest.ingestToDataStore(_, ds, typeName)).reduce(sum)
+      seq.map(GeneralShapefileIngest.ingestToDataStore(_, ds, typeName, dataStoreSchemaExtensions)).reduce(sum)
     } finally {
       ds.dispose()
     }

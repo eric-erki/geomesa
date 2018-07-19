@@ -34,10 +34,12 @@ object GeneralShapefileIngest extends LazyLogging {
     }
   }
 
-  def ingestToDataStore(shapefilePath: String, ds: DataStore, typeName: Option[String]): (Long, Long) = {
+  def ingestToDataStore(shapefilePath: String, ds: DataStore, typeName: Option[String], dataStoreSchemaExtensions: SimpleFeatureType => Unit): (Long, Long) = {
     val shapefile = getShapefileDatastore(shapefilePath)
+
+
     try {
-      ingestToDataStore(shapefile.getFeatureSource.getFeatures, ds, typeName)
+      ingestToDataStore(shapefile.getFeatureSource.getFeatures, ds, typeName, dataStoreSchemaExtensions)
     } finally {
       if (shapefile != null) {
         shapefile.dispose()
@@ -45,10 +47,10 @@ object GeneralShapefileIngest extends LazyLogging {
     }
   }
 
-  def ingestToDataStore(features: SimpleFeatureCollection, ds: DataStore, typeName: Option[String]): (Long, Long) = {
+  def ingestToDataStore(features: SimpleFeatureCollection, ds: DataStore, typeName: Option[String], dataStoreSchemaExtensions: SimpleFeatureType => Unit): (Long, Long) = {
     // Add the ability to rename this FT
     val featureType = {
-      val fromCollection = typeName.map { name =>
+      val fromCollection: SimpleFeatureType = typeName.map { name =>
         val sftBuilder = new SimpleFeatureTypeBuilder()
         sftBuilder.init(features.getSchema)
         sftBuilder.setName(name)
@@ -56,6 +58,7 @@ object GeneralShapefileIngest extends LazyLogging {
       }.getOrElse(features.getSchema)
       val existing = Try(ds.getSchema(fromCollection.getTypeName)).getOrElse(null)
       if (existing != null) { existing } else {
+        dataStoreSchemaExtensions(fromCollection)
         ds.createSchema(fromCollection)
         ds.getSchema(fromCollection.getTypeName)
       }

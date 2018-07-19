@@ -64,10 +64,9 @@ class FsIngestCommand extends IngestCommand[FileSystemDataStore] with FsDataStor
     }
   }
 
-
-  override protected def createShpIngest(): Runnable = {
-    new FsShapefileIngest(connection, Option(params.featureName), params.files, params)
-  }
+//  override protected def createShpIngest(): Runnable = {
+//    new FsShapefileIngest(connection, Option(params.featureName), params.files, params)
+//  }
 
   override protected def createConverterIngest(sft: SimpleFeatureType, converterConfig: Config): Runnable = {
     FsCreateSchemaCommand.setOptions(sft, params)
@@ -83,50 +82,54 @@ class FsIngestCommand extends IngestCommand[FileSystemDataStore] with FsDataStor
         Option(params.tempDir).map(new Path(_)),
         Option(params.reducers))
   }
-}
 
-class FsShapefileIngest(connection: java.util.Map[String, String],
-                        typeName: Option[String],
-                        files: Seq[String],
-                        params: FsIngestParams) extends Runnable {
-  override def run(): Unit = {
-    import TextTools._
-    Command.user.info(s"Ingesting ${getPlural(files.length, "file")}")
-
-    val start = System.currentTimeMillis()
-
-    // If someone is ingesting file from hdfs, S3, or wasb we add the Hadoop URL Factories to the JVM.
-    if (files.exists(PathUtils.isRemote)) {
-      import org.apache.hadoop.fs.FsUrlStreamHandlerFactory
-      val factory = new FsUrlStreamHandlerFactory
-      URL.setURLStreamHandlerFactory(factory)
-    }
-
-    val ds = DataStoreFinder.getDataStore(connection)
-
-    val (ingested, failed) = try {
-      files.map { f =>
-        if(!ds.getTypeNames.contains(typeName)) createSchema(ds, f)
-        GeneralShapefileIngest.ingestToDataStore(f, ds, typeName)
-      }.reduce((l: (Long, Long), r: (Long, Long)) => (l._1 + r._1, l._2 + r._2))
-    } finally {
-      ds.dispose()
-    }
-    Command.user.info(s"Shapefile ingestion complete in ${TextTools.getTime(start)}")
-    Command.user.info(AbstractIngest.getStatInfo(ingested, failed))
-  }
-
-  private def createSchema(ds: DataStore, file: String): Unit = {
-    // We have to modify the user data in the SimpleFeatureType, adding the FSDS options
-    val shapefile = GeneralShapefileIngest.getShapefileDatastore(file)
-    val schema = shapefile.getFeatureSource.getSchema
-    Command.user.info(s"Creating new FSDS schema ${schema.getTypeName}")
-    // Set the options
+  override def dataStoreUserData: SimpleFeatureType => Unit = { schema: SimpleFeatureType =>
     FsCreateSchemaCommand.setOptions(schema, params)
-    // Create the schema
-    ds.createSchema(schema)
   }
 }
+
+//class FsShapefileIngest(connection: java.util.Map[String, String],
+//                        typeName: Option[String],
+//                        files: Seq[String],
+//                        params: FsIngestParams) extends Runnable {
+//  override def run(): Unit = {
+//    import TextTools._
+//    Command.user.info(s"Ingesting ${getPlural(files.length, "file")}")
+//
+//    val start = System.currentTimeMillis()
+//
+//    // If someone is ingesting file from hdfs, S3, or wasb we add the Hadoop URL Factories to the JVM.
+//    if (files.exists(PathUtils.isRemote)) {
+//      import org.apache.hadoop.fs.FsUrlStreamHandlerFactory
+//      val factory = new FsUrlStreamHandlerFactory
+//      URL.setURLStreamHandlerFactory(factory)
+//    }
+//
+//    val ds = DataStoreFinder.getDataStore(connection)
+//
+//    val (ingested, failed) = try {
+//      files.map { f =>
+//        if(!ds.getTypeNames.contains(typeName)) createSchema(ds, f)
+//        GeneralShapefileIngest.ingestToDataStore(f, ds, typeName)
+//      }.reduce((l: (Long, Long), r: (Long, Long)) => (l._1 + r._1, l._2 + r._2))
+//    } finally {
+//      ds.dispose()
+//    }
+//    Command.user.info(s"Shapefile ingestion complete in ${TextTools.getTime(start)}")
+//    Command.user.info(AbstractIngest.getStatInfo(ingested, failed))
+//  }
+//
+//  private def createSchema(ds: DataStore, file: String): Unit = {
+//    // We have to modify the user data in the SimpleFeatureType, adding the FSDS options
+//    val shapefile = GeneralShapefileIngest.getShapefileDatastore(file)
+//    val schema = shapefile.getFeatureSource.getSchema
+//    Command.user.info(s"Creating new FSDS schema ${schema.getTypeName}")
+//    // Set the options
+//    FsCreateSchemaCommand.setOptions(schema, params)
+//    // Create the schema
+//    ds.createSchema(schema)
+//  }
+//}
 
 object FsIngestCommand {
   @Parameters(commandDescription = "Ingest/convert various file formats into GeoMesa")
