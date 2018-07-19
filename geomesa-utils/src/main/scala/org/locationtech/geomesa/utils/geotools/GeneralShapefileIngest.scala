@@ -12,11 +12,13 @@ import java.io.File
 
 import com.typesafe.scalalogging.LazyLogging
 import org.geotools.data._
+import org.geotools.data.crs.ReprojectFeatureResults
 import org.geotools.data.simple.SimpleFeatureCollection
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder
+import org.geotools.referencing.crs.DefaultGeographicCRS
 import org.locationtech.geomesa.utils.collection.SelfClosingIterator
 import org.locationtech.geomesa.utils.io.{PathUtils, WithClose}
-import org.opengis.feature.simple.SimpleFeature
+import org.opengis.feature.simple.{SimpleFeature, SimpleFeatureType}
 
 import scala.collection.JavaConversions._
 import scala.util.Try
@@ -78,8 +80,12 @@ object GeneralShapefileIngest extends LazyLogging {
     var count = 0L
     var failed = 0L
 
+    // Reproject features to 4326 on the fly.
+    // GeoTools handles figuring out if this an identity transformation.
+    val reprojectedFeatures = new ReprojectFeatureResults(features, DefaultGeographicCRS.WGS84)
+
     WithClose(ds.getFeatureWriterAppend(featureType.getTypeName, Transaction.AUTO_COMMIT)) { writer =>
-      SelfClosingIterator(features.features()).foreach { feature =>
+      SelfClosingIterator(reprojectedFeatures.features()).foreach { feature =>
         try {
           FeatureUtils.copyToWriter(writer, retype(feature))
           writer.write()
