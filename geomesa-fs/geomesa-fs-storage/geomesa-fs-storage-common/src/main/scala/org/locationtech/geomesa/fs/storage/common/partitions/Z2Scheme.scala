@@ -126,7 +126,7 @@ object SpatialPartitionSchemeConfig {
 trait SpatialPartitionSchemeFactory extends PartitionSchemeFactory {
   def Name: String
   lazy val NamePattern: Pattern = Pattern.compile(s"$Name(-([0-9]+)bits?)?")
-  val Resolution = s"$Name-resolution"
+  lazy val Resolution = s"$Name-resolution"
 
 
   override def load(name: String,
