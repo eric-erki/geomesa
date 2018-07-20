@@ -8,32 +8,65 @@
 
 package org.locationtech.geomesa.fs.storage.common.partitions
 
-import java.util.{Collections, Optional}
 import java.util.regex.Pattern
+import java.util.{Collections, Optional}
 
 import com.vividsolutions.jts.geom.{Geometry, Point}
-import org.locationtech.geomesa.curve.Z2SFC
+import org.locationtech.geomesa.curve.{XZ2SFC, Z2SFC}
 import org.locationtech.geomesa.filter.{FilterHelper, FilterValues}
 import org.locationtech.geomesa.fs.storage.api.{PartitionScheme, PartitionSchemeFactory}
 import org.locationtech.geomesa.utils.geotools.{GeometryUtils, WholeWorldPolygon}
 import org.opengis.feature.simple.{SimpleFeature, SimpleFeatureType}
 import org.opengis.filter.Filter
 
-class Z2Scheme(bits: Int, geom: String, leaf: Boolean) extends PartitionScheme {
-
-  require(bits % 2 == 0, "Resolution must be an even number")
-
-  // note: z2sfc resolution is per dimension
-  private val z2 = new Z2SFC(bits / 2)
-  private val digits = math.ceil(math.log10(math.pow(2, bits))).toInt
-
+class Z2Scheme(bits: Int, geom: String, leaf: Boolean) extends SpatialScheme(bits, geom, leaf) {
   override def getName: String = Z2Scheme.Name
+
+  private val z2 = new Z2SFC(bits / 2)
 
   override def getPartition(feature: SimpleFeature): String = {
     // TODO support non-point geoms
     val pt = feature.getAttribute(geom).asInstanceOf[Point]
     z2.index(pt.getX, pt.getY).z.formatted(s"%0${digits}d")
   }
+
+  override def generateRanges(xy: Seq[(Double, Double, Double, Double)]): Seq[Long] = z2.ranges(xy).flatMap(ir => ir.lower to ir.upper)
+}
+
+class XZ2Scheme(bits: Int, geom: String, leaf: Boolean) extends SpatialScheme(bits, geom, leaf) {
+  override def getName: String = XZ2Scheme.Name
+
+  private val xz2 = XZ2SFC((bits / 2).asInstanceOf[Short])
+
+  override def getPartition(feature: SimpleFeature): String = {
+    // TODO support non-point geoms
+    val geometry = feature.getAttribute(geom).asInstanceOf[Geometry]
+    val envelope = geometry.getEnvelopeInternal
+    xz2.index(envelope.getMinX, envelope.getMinY, envelope.getMaxX, envelope.getMaxY).formatted(s"%0${digits}d")
+  }
+
+  override def generateRanges(xy: Seq[(Double, Double, Double, Double)]): Seq[Long] = xz2.ranges(xy).flatMap(ir => ir.lower to ir.upper)
+}
+
+
+abstract class SpatialScheme(bits: Int, geom: String, leaf: Boolean) extends PartitionScheme {
+
+  require(bits % 2 == 0, "Resolution must be an even number")
+
+  // note: z2sfc resolution is per dimension
+//  private val z2 = new Z2SFC(bits / 2)
+  // TODO: The number of digits might be off..
+  protected val digits = math.ceil(math.log10(math.pow(2, bits))).toInt
+
+  override def getName: String = Z2Scheme.Name
+
+//  override def getPartition(feature: SimpleFeature): String = {
+//    // TODO support non-point geoms
+//    val pt = feature.getAttribute(geom).asInstanceOf[Point]
+//    z2.index(pt.getX, pt.getY).z.formatted(s"%0${digits}d")
+//  }
+
+  def generateRanges(xy: Seq[(Double, Double, Double, Double)]): Seq[Long]
 
   override def getPartitions(filter: Filter): java.util.List[String] = {
     import scala.collection.JavaConverters._
@@ -50,8 +83,8 @@ class Z2Scheme(bits: Int, geom: String, leaf: Boolean) extends PartitionScheme {
     if (geometries.disjoint) {
       Collections.emptyList()
     } else {
-      val xy = geometries.values.map(GeometryUtils.bounds)
-      val enumerations = z2.ranges(xy).flatMap(ir => ir.lower to ir.upper)
+      val xy: Seq[(Double, Double, Double, Double)] = geometries.values.map(GeometryUtils.bounds)
+      val enumerations: Seq[Long] = generateRanges(xy) //z2.ranges(xy).flatMap(ir => ir.lower to ir.upper)
       enumerations.map(_.formatted(s"%0${digits}d")).asJava
     }
   }
@@ -80,6 +113,10 @@ class Z2Scheme(bits: Int, geom: String, leaf: Boolean) extends PartitionScheme {
   override def hashCode(): Int = getOptions.hashCode()
 }
 
+object XZ2Scheme {
+  val Name = "xz2"
+}
+
 object Z2Scheme {
 
   val Name = "z2"
@@ -93,6 +130,8 @@ object Z2Scheme {
   }
 
   class Z2PartitionSchemeFactory extends PartitionSchemeFactory {
+
+
     override def load(name: String,
                       sft: SimpleFeatureType,
                       options: java.util.Map[String, String]): Optional[PartitionScheme] = {
