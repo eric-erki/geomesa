@@ -39,7 +39,7 @@ object FsCreateSchemaCommand {
       case Left(e) => throw new ParameterException(e)
       case Right(s) if s.isLeafStorage == params.leafStorage => s
       case Right(s) =>
-        val opts = s.getOptions.asScala.updated(Z2Scheme.Config.LeafStorage, params.leafStorage.toString).toMap
+        val opts = s.getOptions.asScala.updated(Z2Scheme.Z2Config.LeafStorage, params.leafStorage.toString).toMap
         PartitionScheme.apply(sft, s.getName, opts.asJava)
     }
 
