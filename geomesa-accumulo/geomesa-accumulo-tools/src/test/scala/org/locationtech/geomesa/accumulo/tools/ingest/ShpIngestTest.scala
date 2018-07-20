@@ -28,7 +28,7 @@ import scala.collection.JavaConversions._
 
 @RunWith(classOf[JUnitRunner])
 class ShpIngestTest extends Specification {
-
+  Hints.putSystemDefault(Hints.FORCE_LONGITUDE_FIRST_AXIS_ORDER, true)
   sequential
 
   // note: shpfile always puts geom first

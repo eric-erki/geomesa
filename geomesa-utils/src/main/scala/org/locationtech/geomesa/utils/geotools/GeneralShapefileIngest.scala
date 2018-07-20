@@ -15,6 +15,7 @@ import org.geotools.data._
 import org.geotools.data.crs.ReprojectFeatureResults
 import org.geotools.data.simple.SimpleFeatureCollection
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder
+import org.geotools.referencing.CRS
 import org.geotools.referencing.crs.DefaultGeographicCRS
 import org.locationtech.geomesa.utils.collection.SelfClosingIterator
 import org.locationtech.geomesa.utils.io.{PathUtils, WithClose}
@@ -82,7 +83,7 @@ object GeneralShapefileIngest extends LazyLogging {
 
     // Reproject features to 4326 on the fly.
     // GeoTools handles figuring out if this an identity transformation.
-    val reprojectedFeatures = new ReprojectFeatureResults(features, DefaultGeographicCRS.WGS84)
+    val reprojectedFeatures = new ReprojectFeatureResults(features, CRS.decode("EPSG:4326"))
 
     WithClose(ds.getFeatureWriterAppend(featureType.getTypeName, Transaction.AUTO_COMMIT)) { writer =>
       SelfClosingIterator(reprojectedFeatures.features()).foreach { feature =>

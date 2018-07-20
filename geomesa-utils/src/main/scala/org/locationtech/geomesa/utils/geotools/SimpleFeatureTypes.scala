@@ -13,6 +13,8 @@ import java.util.Date
 import com.typesafe.config.Config
 import org.apache.commons.lang.StringEscapeUtils
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder
+import org.geotools.referencing.CRS
+import org.geotools.referencing.crs.DefaultGeographicCRS
 import org.locationtech.geomesa.utils.geotools.AttributeSpec.GeomAttributeSpec
 import org.locationtech.geomesa.utils.geotools.NameableFeatureTypeFactory.NameableSimpleFeatureType
 import org.opengis.feature.`type`.{AttributeDescriptor, FeatureTypeFactory, GeometryDescriptor}
@@ -233,9 +235,12 @@ object SimpleFeatureTypes {
     val b = factory.map(new SimpleFeatureTypeBuilder(_)).getOrElse(new SimpleFeatureTypeBuilder())
     b.setNamespaceURI(namespace)
     b.setName(name)
+    //b.setCRS(DefaultGeographicCRS.WGS84)
     b.addAll(spec.attributes.map(_.toDescriptor))
     defaultGeom.foreach(b.setDefaultGeometry)
+    // JNH: How have we not set this before...
 
+    //b.setCRS(CRS.decode("EPSG:4326"))
     val sft = b.buildFeatureType()
     sft.getUserData.putAll(spec.options)
     defaultDate.foreach(sft.setDtgField)

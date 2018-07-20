@@ -14,6 +14,7 @@ import java.util.{Date, UUID}
 import com.vividsolutions.jts.geom._
 import org.apache.commons.lang.StringEscapeUtils
 import org.geotools.feature.AttributeTypeBuilder
+import org.geotools.referencing.crs.DefaultGeographicCRS
 import org.opengis.feature.`type`.AttributeDescriptor
 import org.opengis.feature.simple.SimpleFeatureType
 
@@ -83,6 +84,7 @@ sealed trait AttributeSpec {
     */
   def toDescriptor: AttributeDescriptor = {
     val builder = new AttributeTypeBuilder().binding(clazz)
+    //builder.setCRS(DefaultGeographicCRS.WGS84)
     descriptorOptions.foreach { case (k, v) => builder.userData(k, v) }
     builderHook(builder)
     builder.buildDescriptor(name)
