@@ -108,6 +108,9 @@ object Z2Scheme {
   val Name = "z2"
   class Z2PartitionSchemeFactory extends SpatialPartitionSchemeFactory {
     override val Name: String = Z2Scheme.Name
+
+    override def buildPartitionScheme(bits: Int, geom: String, leaf: Boolean): SpatialScheme =
+      new Z2Scheme(bits, geom, leaf)
   }
 }
 
@@ -115,6 +118,9 @@ object XZ2Scheme {
   val Name: String = "xz2"
   class XZ2PartitionSchemeFactory extends SpatialPartitionSchemeFactory {
     override val Name: String = XZ2Scheme.Name
+
+    override def buildPartitionScheme(bits: Int, geom: String, leaf: Boolean): SpatialScheme =
+      new XZ2Scheme(bits, geom, leaf)
   }
 }
 
@@ -149,7 +155,9 @@ trait SpatialPartitionSchemeFactory extends PartitionSchemeFactory {
             throw new IllegalArgumentException(s"$Name scheme requires bit resolution '${Resolution}'")
           }
       val leaf = Option(options.get(LeafStorage)).forall(java.lang.Boolean.parseBoolean)
-      Optional.of(new Z2Scheme(res, geom, leaf))
+      Optional.of(buildPartitionScheme(res, geom, leaf))
     }
   }
+
+  def buildPartitionScheme(bits: Int, geom: String, leaf: Boolean): SpatialScheme
 }

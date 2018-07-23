@@ -43,7 +43,7 @@ class OrcFileSystemReader(sft: SimpleFeatureType,
 
   private class PathReader(file: Path) extends CloseableIterator[SimpleFeature] {
     private val feature = new ScalaSimpleFeature(sft, "")
-    private val transformed = transform.map { case (tdefs, tsft) =>
+    private val transformed: Option[TransformSimpleFeature] = transform.map { case (tdefs, tsft) =>
       val sf = TransformSimpleFeature(sft, tsft, tdefs)
       sf.setFeature(feature)
       sf
@@ -52,7 +52,9 @@ class OrcFileSystemReader(sft: SimpleFeatureType,
     private val reader = OrcFile.createReader(file, OrcFile.readerOptions(config))
     private val rows = reader.rows(options)
     private val batch = reader.getSchema.createRowBatch()
-    private val attributeReader = if (batch.cols.length > 0) { OrcAttributeReader(sft, batch, columns) } else { null }
+    private val attributeReader = if (batch.cols.length > 0) {
+      OrcAttributeReader(sft, batch, columns)
+    } else { null }
 
     private var staged: Boolean = false
     private var i = 0
