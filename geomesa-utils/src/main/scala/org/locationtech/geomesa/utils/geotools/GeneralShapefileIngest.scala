@@ -12,11 +12,14 @@ import java.io.File
 
 import com.typesafe.scalalogging.LazyLogging
 import org.geotools.data._
+import org.geotools.data.crs.ReprojectFeatureResults
 import org.geotools.data.simple.SimpleFeatureCollection
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder
+import org.geotools.referencing.CRS
+import org.geotools.referencing.crs.DefaultGeographicCRS
 import org.locationtech.geomesa.utils.collection.SelfClosingIterator
 import org.locationtech.geomesa.utils.io.{PathUtils, WithClose}
-import org.opengis.feature.simple.SimpleFeature
+import org.opengis.feature.simple.{SimpleFeature, SimpleFeatureType}
 
 import scala.collection.JavaConversions._
 import scala.util.Try
@@ -34,10 +37,12 @@ object GeneralShapefileIngest extends LazyLogging {
     }
   }
 
-  def ingestToDataStore(shapefilePath: String, ds: DataStore, typeName: Option[String]): (Long, Long) = {
+  def ingestToDataStore(shapefilePath: String, ds: DataStore, typeName: Option[String], dataStoreSchemaExtensions: SimpleFeatureType => Unit): (Long, Long) = {
     val shapefile = getShapefileDatastore(shapefilePath)
+
+
     try {
-      ingestToDataStore(shapefile.getFeatureSource.getFeatures, ds, typeName)
+      ingestToDataStore(shapefile.getFeatureSource.getFeatures, ds, typeName, dataStoreSchemaExtensions)
     } finally {
       if (shapefile != null) {
         shapefile.dispose()
@@ -45,10 +50,10 @@ object GeneralShapefileIngest extends LazyLogging {
     }
   }
 
-  def ingestToDataStore(features: SimpleFeatureCollection, ds: DataStore, typeName: Option[String]): (Long, Long) = {
+  def ingestToDataStore(features: SimpleFeatureCollection, ds: DataStore, typeName: Option[String], dataStoreSchemaExtensions: SimpleFeatureType => Unit): (Long, Long) = {
     // Add the ability to rename this FT
     val featureType = {
-      val fromCollection = typeName.map { name =>
+      val fromCollection: SimpleFeatureType = typeName.map { name =>
         val sftBuilder = new SimpleFeatureTypeBuilder()
         sftBuilder.init(features.getSchema)
         sftBuilder.setName(name)
@@ -56,6 +61,7 @@ object GeneralShapefileIngest extends LazyLogging {
       }.getOrElse(features.getSchema)
       val existing = Try(ds.getSchema(fromCollection.getTypeName)).getOrElse(null)
       if (existing != null) { existing } else {
+        dataStoreSchemaExtensions(fromCollection)
         ds.createSchema(fromCollection)
         ds.getSchema(fromCollection.getTypeName)
       }
@@ -75,8 +81,14 @@ object GeneralShapefileIngest extends LazyLogging {
     var count = 0L
     var failed = 0L
 
+    // Reproject features to 4326 on the fly.
+    // GeoTools handles figuring out if this an identity transformation.
+    //val reprojectedFeatures = new ReprojectFeatureResults(features, CRS.decode("EPSG:4326"))
+    val reprojectedFeatures = new ReprojectFeatureResults(features, CRS_EPSG_4326)
+
+
     WithClose(ds.getFeatureWriterAppend(featureType.getTypeName, Transaction.AUTO_COMMIT)) { writer =>
-      SelfClosingIterator(features.features()).foreach { feature =>
+      SelfClosingIterator(reprojectedFeatures.features()).foreach { feature =>
         try {
           FeatureUtils.copyToWriter(writer, retype(feature))
           writer.write()

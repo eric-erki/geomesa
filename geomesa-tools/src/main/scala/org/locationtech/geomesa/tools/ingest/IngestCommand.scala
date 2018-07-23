@@ -113,7 +113,9 @@ trait IngestCommand[DS <: DataStore] extends DataStoreCommand[DS] with Interacti
   }
 
   protected def createShpIngest(): Runnable =
-    new ShapefileIngest(connection, Option(params.featureName), params.files, params.threads)
+    new ShapefileIngest(connection, Option(params.featureName), params.files, params.threads, dataStoreUserData)
+
+  def dataStoreUserData: SimpleFeatureType => Unit = { _ => }
 
   def ensureSameFs(prefixes: Seq[String]): Unit = {
     prefixes.foreach { pre =>
