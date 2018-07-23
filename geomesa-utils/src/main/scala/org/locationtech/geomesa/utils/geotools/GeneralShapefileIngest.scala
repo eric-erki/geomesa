@@ -83,7 +83,9 @@ object GeneralShapefileIngest extends LazyLogging {
 
     // Reproject features to 4326 on the fly.
     // GeoTools handles figuring out if this an identity transformation.
-    val reprojectedFeatures = new ReprojectFeatureResults(features, CRS.decode("EPSG:4326"))
+    //val reprojectedFeatures = new ReprojectFeatureResults(features, CRS.decode("EPSG:4326"))
+    val reprojectedFeatures = new ReprojectFeatureResults(features, CRS_EPSG_4326)
+
 
     WithClose(ds.getFeatureWriterAppend(featureType.getTypeName, Transaction.AUTO_COMMIT)) { writer =>
       SelfClosingIterator(reprojectedFeatures.features()).foreach { feature =>

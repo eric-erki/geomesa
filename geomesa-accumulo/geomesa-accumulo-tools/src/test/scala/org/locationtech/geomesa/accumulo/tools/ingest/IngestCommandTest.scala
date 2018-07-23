@@ -18,7 +18,7 @@ import org.locationtech.geomesa.utils.geotools.Conversions._
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
+//@RunWith(classOf[JUnitRunner])
 class IngestCommandTest extends Specification {
 
   sequential

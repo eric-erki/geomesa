@@ -116,7 +116,7 @@ class ShpIngestTest extends Specification {
 
       fn(shpFile)
     } finally {
-      PathUtils.deleteRecursively(dir)
+      //PathUtils.deleteRecursively(dir)
     }
   }
 }
