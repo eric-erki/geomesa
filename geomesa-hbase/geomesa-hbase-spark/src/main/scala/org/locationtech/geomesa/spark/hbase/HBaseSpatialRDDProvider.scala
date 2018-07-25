@@ -9,7 +9,7 @@
 package org.locationtech.geomesa.spark.hbase
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.hbase.client.{Get, Scan}
+import org.apache.hadoop.hbase.client.{Get, HConnection, Scan}
 import org.apache.hadoop.hbase.mapreduce.MultiTableInputFormat
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil
 import org.apache.hadoop.hbase.util.Base64
@@ -65,6 +65,7 @@ class HBaseSpatialRDDProvider extends SpatialRDDProvider {
           convertScanToString(scan)
         }
         conf.setStrings(MultiTableInputFormat.SCANS, scans: _*)
+        conf.set(HConnection.HBASE_CLIENT_CONNECTION_IMPL, classOf[GeoMesaHBaseConnection].getName)
 
         sc.newAPIHadoopRDD(conf, classOf[GeoMesaHBaseInputFormat], classOf[Text], classOf[SimpleFeature]).map(_._2)
       }

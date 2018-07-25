@@ -166,6 +166,7 @@
                                     <exclude>org.scala-lang:*</exclude>
                                     <exclude>io.netty:*</exclude>
                                     <exclude>org.json4s:*</exclude>
+                                    <exclude>com.sun.jersey:*</exclude>
                                 </excludes>
                             </artifactSet>
                             <filters>

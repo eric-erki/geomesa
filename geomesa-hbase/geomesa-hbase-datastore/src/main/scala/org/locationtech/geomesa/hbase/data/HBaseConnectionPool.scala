@@ -56,6 +56,7 @@ object HBaseConnectionPool extends LazyLogging {
               logger.debug("Checking configuration availability")
               HBaseAdmin.checkHBaseAvailable(conf)
             }
+            logger.info("Creating a whole new connection")
             ConnectionFactory.createConnection(conf)
           }
         }
@@ -83,8 +84,13 @@ object HBaseConnectionPool extends LazyLogging {
     if (ConnectionParam.exists(params)) {
       ConnectionParam.lookup(params)
     } else {
-      connectionCache.get((getConfiguration(params), validate))
+      val conf = getConfiguration(params)
+      getConnection(conf, validate)
     }
+  }
+
+  def getConnection(config: Configuration, validate: Boolean): Connection = {
+    connectionCache.get((config, validate))
   }
 
   // hadoop/hbase security is configured in a global manner...

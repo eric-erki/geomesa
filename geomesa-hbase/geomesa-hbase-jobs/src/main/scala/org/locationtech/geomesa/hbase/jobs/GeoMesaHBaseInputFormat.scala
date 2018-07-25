@@ -47,8 +47,10 @@ class GeoMesaHBaseInputFormat extends InputFormat[Text, SimpleFeature] with Lazy
     * Gets splits for a job.
     */
   override def getSplits(context: JobContext): java.util.List[InputSplit] = {
+    import scala.collection.JavaConversions._
     init(context.getConfiguration)
     val splits = delegate.getSplits(context)
+    splits.map(_.)
     logger.debug(s"Got ${splits.size()} splits")
     splits
   }
