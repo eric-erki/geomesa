@@ -117,8 +117,6 @@ class CompactCommandTest extends Specification with BeforeAfterAll {
 
       println("******* Starting compaction!")
       command.execute()
-      //command.compact(getDataStore.asInstanceOf[FileSystemDataStore])
-
       println("******* Finishing compaction!")
 
       true mustEqual(true)

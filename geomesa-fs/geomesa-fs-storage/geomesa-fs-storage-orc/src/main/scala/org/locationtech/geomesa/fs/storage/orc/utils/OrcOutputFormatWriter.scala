@@ -324,6 +324,8 @@ object OrcOutputFormatWriter {
             i += 1
           }
           j += 1
+          xx.add(x)
+          yy.add(y)
         }
       }
     }
