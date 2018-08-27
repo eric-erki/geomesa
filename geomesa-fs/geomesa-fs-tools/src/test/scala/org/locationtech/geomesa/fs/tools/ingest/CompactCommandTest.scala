@@ -11,6 +11,7 @@ package org.locationtech.geomesa.fs.tools.ingest
 import java.nio.file.{Files, Path}
 import java.time.temporal.ChronoUnit
 
+import com.vividsolutions.jts.geom.MultiLineString
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hdfs.{HdfsConfiguration, MiniDFSCluster}
@@ -44,16 +45,16 @@ class CompactCommandTest extends Specification with BeforeAfterAll {
   val tempDir: Path = Files.createTempDirectory("compactCommand")
 
 
-  val sft = SimpleFeatureTypes.createType(typeName, "name:String,age:Int,dtg:Date,*geom:Point:srid=4326")
+  val sft = SimpleFeatureTypes.createType(typeName, "name:String,age:Int,dtg:Date,*geom:MultiLineString:srid=4326")
   PartitionScheme.addToSft(sft, new DateTimeScheme(DateTimeScheme.Formats.Daily.format, ChronoUnit.DAYS, 1, "dtg", false))
 
 
   val features = Seq.tabulate(10) { i =>
-    ScalaSimpleFeature.create(sft, s"$i", s"test$i", 100 + i, s"2017-06-0${5 + (i % 3)}T04:03:02.0001Z", s"POINT(10 10.$i)")
+    ScalaSimpleFeature.create(sft, s"$i", s"test$i", 100 + i, s"2017-06-0${5 + (i % 3)}T04:03:02.0001Z", s"MULTILINESTRING((0 0, 10 10.$i))")
   }
   val features2 = Seq.tabulate(10) { j =>
     val i = j+10
-    ScalaSimpleFeature.create(sft, s"$i", s"test$i", 100 + i, s"2017-06-0${5 + (j % 3)}T04:03:02.0001Z", s"POINT(10 10.$j)")
+    ScalaSimpleFeature.create(sft, s"$i", s"test$i", 100 + i, s"2017-06-0${5 + (j % 3)}T04:03:02.0001Z", s"MULTILINESTRING((0 0, 10 10.$j))")
   }
 
   def getDataStore: DataStore = {
@@ -132,7 +133,9 @@ class CompactCommandTest extends Specification with BeforeAfterAll {
       //fs.getCount(Query.ALL) mustEqual 20
       val iter = fs.getFeatures.features
       while (iter.hasNext) {
-        println(s" Feature: ${iter.next}")
+        val feat = iter.next
+        println(s" Feature: ${feat}")
+        feat.getDefaultGeometry.asInstanceOf[MultiLineString].isEmpty mustEqual false
       }
       fs.asInstanceOf[FileSystemFeatureStore].storage.getMetadata.getFileCount mustEqual(3)
     }
