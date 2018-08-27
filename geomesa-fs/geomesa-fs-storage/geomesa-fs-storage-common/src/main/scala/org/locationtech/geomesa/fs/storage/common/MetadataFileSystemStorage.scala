@@ -155,6 +155,8 @@ abstract class MetadataFileSystemStorage(conf: Configuration,
 
     logger.debug(s"Updating metadata for type ${metadata.getSchema.getTypeName}")
     metadata.replaceFiles(partition, toCompact.map(_.getName).asJava, dataPath.getName)
+    // TODO: Calculate bounds/counts per partition
+    // metadata.replaceCount(partition, written)
 
     logger.debug(s"Compacted $written records into file $dataPath")
   }
