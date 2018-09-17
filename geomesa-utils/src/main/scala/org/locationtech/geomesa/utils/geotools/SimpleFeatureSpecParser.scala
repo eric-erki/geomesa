@@ -36,7 +36,9 @@ object SimpleFeatureSpecParser {
     }
     val runner = if (report) { ReportingParseRunner(rule) } else { BasicParseRunner(rule) }
     val parsing = runner.run(spec.stripMargin('|').replaceAll("\\s*", ""))
-    parsing.result.getOrElse(throw new ParsingException(constructErrorMessage(parsing, report)))
+    parsing.result.getOrElse(
+      throw new ParsingException(constructErrorMessage(parsing, report))
+    )
   }
 
   private def constructErrorMessage[T](result: ParsingResult[T], report: Boolean): String = {
@@ -99,7 +101,8 @@ private class SimpleFeatureSpecParser extends BasicParser {
   // full simple feature spec
   def spec: Rule1[SimpleFeatureSpec] = rule("Specification") {
     (zeroOrMore(attribute, ",") ~ sftOptions) ~ EOI ~~> {
-      (attributes, sftOpts) => SimpleFeatureSpec(attributes, sftOpts)
+      (attributes, sftOpts) =>
+        SimpleFeatureSpec(attributes, sftOpts)
     }
   }
 

@@ -15,12 +15,10 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.hdfs.{HdfsConfiguration, MiniDFSCluster}
 import org.apache.spark.sql.{DataFrame, SQLContext, SQLTypes, SparkSession}
-import org.geotools.data.{Query, Transaction}
 import org.junit.runner.RunWith
 import org.locationtech.geomesa.fs.FileSystemDataStoreFactory
 import org.locationtech.geomesa.fs.storage.common.PartitionScheme
 import org.locationtech.geomesa.spark.SparkSQLTestUtils
-import org.locationtech.geomesa.utils.collection.SelfClosingIterator
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 import org.specs2.specification.BeforeAfterAll
@@ -30,9 +28,8 @@ import scala.collection.JavaConversions._
 @RunWith(classOf[JUnitRunner])
 class FSSparkProviderTest extends Specification with BeforeAfterAll with LazyLogging {
 
-  import org.locationtech.geomesa.filter.ff
-
   sequential
+
   lazy val sftName: String = "chicago"
   val tempDir: Path = Files.createTempDirectory("fsSparkTest")
   var cluster: MiniDFSCluster = _
@@ -73,7 +70,7 @@ class FSSparkProviderTest extends Specification with BeforeAfterAll with LazyLog
 
   "FileSystem datastore Spark Data Tests" should {
     // before
-    "start spaanyork" >> {
+    "start spark" >> {
       spark = SparkSQLTestUtils.createSparkSession()
       sc = spark.sqlContext
       SQLTypes.init(sc)
