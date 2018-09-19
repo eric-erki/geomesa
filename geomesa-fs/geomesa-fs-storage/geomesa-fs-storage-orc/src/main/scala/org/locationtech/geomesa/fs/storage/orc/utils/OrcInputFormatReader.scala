@@ -268,7 +268,7 @@ object OrcInputFormatReader {
             coordinates(i) = new Coordinate(convertUnboxed(xList.get(i)), convertUnboxed(yList.get(i)))
             i += 1
           }
-          lines(j) = gf.createLinearRing(coordinates)
+          lines(j) = gf.createLineString(coordinates)
           j += 1
         }
         sf.setAttribute(attribute, gf.createMultiLineString(lines))
@@ -299,7 +299,7 @@ object OrcInputFormatReader {
         while (k < polygons.length) {
           val xxList = xxxList.get(k)
           val yyList = yyyList.get(k)
-          val lines = Array.ofDim[LineString](xxList.size)
+          val lines = Array.ofDim[LinearRing](xxList.size)
           var j = 0
           while (j < lines.length) {
             val xList = xxList.get(j)
@@ -312,6 +312,11 @@ object OrcInputFormatReader {
             }
             lines(j) = gf.createLinearRing(coordinates)
             j += 1
+          }
+          polygons(k) = if (lines.size == 1) {
+            gf.createPolygon(lines(0))
+          } else {
+            gf.createPolygon(lines(0), lines.tail)
           }
           k += 1
         }
